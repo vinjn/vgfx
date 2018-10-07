@@ -11,7 +11,6 @@
 #include <sstream>
 #include <vector>
 
-#define TINY_RENDERER_IMPLEMENTATION
 #if defined(TINY_RENDERER_DX)
     #include "tinydx.h"
 #elif defined(TINY_RENDERER_VK)
@@ -20,11 +19,7 @@
 
 const char*         k_app_name = "01_Color";
 const uint32_t      k_image_count = 3;
-#if defined(__linux__)
 const std::string   k_asset_dir = "../samples/assets/";
-#elif defined(_WIN32)
-const std::string   k_asset_dir = "../../samples/assets/";
-#endif
 
 tr_renderer*        m_renderer = nullptr;
 tr_cmd_pool*        m_cmd_pool = nullptr;

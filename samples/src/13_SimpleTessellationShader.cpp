@@ -12,7 +12,6 @@
 #include <sstream>
 #include <vector>
 
-#define TINY_RENDERER_IMPLEMENTATION
 #if defined(TINY_RENDERER_DX)
     #include "tinydx.h"
 #elif defined(TINY_RENDERER_VK)
@@ -22,9 +21,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
@@ -36,11 +32,7 @@ using float4x4 = glm::mat4;
 
 const char*         k_app_name = "13_SimpleTessellationShader";
 const uint32_t      k_image_count = 1;
-#if defined(__linux__)
 const std::string   k_asset_dir = "../samples/assets/";
-#elif defined(_WIN32)
-const std::string   k_asset_dir = "../../samples/assets/";
-#endif
 
 tr_renderer*        m_renderer = nullptr;
 tr_cmd_pool*        m_cmd_pool = nullptr;

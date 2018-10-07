@@ -28,8 +28,6 @@ solution "vgfx"
             "_SCL_SECURE_NO_WARNINGS",
             "_CRT_SECURE_NO_WARNINGS",
             "WIN32",
-            "_LIB",
-            "GLM_FORCE_DEPTH_ZERO_TO_ONE",
         }
         systemversion "10.0.17134.0"
 
@@ -116,6 +114,9 @@ solution "vgfx"
 
             defines {
                 "TINY_RENDERER_VK",
+                "GLM_FORCE_RADIANS",
+                "GLM_FORCE_DEPTH_ZERO_TO_ONE",
+                "GLM_ENABLE_EXPERIMENTAL",
             }
 
             debugdir "bin" 
