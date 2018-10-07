@@ -474,9 +474,7 @@ struct tr_renderer
     VkDebugReportCallbackEXT vk_debug_report;
     bool vk_device_ext_VK_AMD_negative_viewport_height;
 
-#if defined(_DEBUG)
     ComPtr<ID3D12Debug> dx_debug_ctrl;
-#endif
     // Use IDXGIFactory4 for now since IDXGIFactory5
     // creates problems for the Visual Studio graphics
     // debugger.

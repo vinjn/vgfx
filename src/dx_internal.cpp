@@ -1,7 +1,7 @@
 #include "dx_internal.h"
+#include <combaseapi.h>
 #include <d3dcompiler.h>
 #include <stdio.h>
-#include <combaseapi.h>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -234,7 +234,8 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
     // Create fence
     {
         hres = p_renderer->dx_device->CreateFence(
-            0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&p_renderer->graphics_queue->dx_wait_idle_fence));
+            0, D3D12_FENCE_FLAG_NONE,
+            IID_PPV_ARGS(&p_renderer->graphics_queue->dx_wait_idle_fence));
         assert(SUCCEEDED(hres));
         p_renderer->graphics_queue->dx_wait_idle_fence_value = 1;
 
@@ -452,7 +453,6 @@ void tr_internal_dx_create_descriptor_set(tr_renderer* p_renderer,
 void tr_internal_dx_destroy_descriptor_set(tr_renderer* p_renderer,
                                            tr_descriptor_set* p_descriptor_set)
 {
-
 }
 
 void tr_internal_dx_create_cmd_pool(tr_renderer* p_renderer, tr_queue* p_queue, bool transient,
@@ -465,9 +465,7 @@ void tr_internal_dx_create_cmd_pool(tr_renderer* p_renderer, tr_queue* p_queue, 
     assert(SUCCEEDED(hres));
 }
 
-void tr_internal_dx_destroy_cmd_pool(tr_renderer* p_renderer, tr_cmd_pool* p_cmd_pool)
-{
-}
+void tr_internal_dx_destroy_cmd_pool(tr_renderer* p_renderer, tr_cmd_pool* p_cmd_pool) {}
 
 void tr_internal_dx_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd* p_cmd)
 {
@@ -476,7 +474,8 @@ void tr_internal_dx_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd* 
 
     ID3D12PipelineState* initialState = NULL;
     HRESULT hres = p_cmd_pool->renderer->dx_device->CreateCommandList(
-        0, D3D12_COMMAND_LIST_TYPE_DIRECT, p_cmd_pool->dx_cmd_alloc.Get(), initialState, IID_PPV_ARGS(&p_cmd->dx_cmd_list));
+        0, D3D12_COMMAND_LIST_TYPE_DIRECT, p_cmd_pool->dx_cmd_alloc.Get(), initialState,
+        IID_PPV_ARGS(&p_cmd->dx_cmd_list));
     assert(SUCCEEDED(hres));
 
     // Command lists are created in the recording state, but there is nothing
@@ -484,10 +483,7 @@ void tr_internal_dx_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd* 
     p_cmd->dx_cmd_list->Close();
 }
 
-void tr_internal_dx_destroy_cmd(tr_cmd_pool* p_cmd_pool, tr_cmd* p_cmd)
-{
-
-}
+void tr_internal_dx_destroy_cmd(tr_cmd_pool* p_cmd_pool, tr_cmd* p_cmd) {}
 
 void tr_internal_dx_create_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
 {
@@ -576,7 +572,7 @@ void tr_internal_dx_create_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
     }
 
     HRESULT hres = p_renderer->dx_device->CreateCommittedResource(
-            &heap_props, heap_flags, &desc, res_states, NULL, IID_PPV_ARGS(&p_buffer->dx_resource));
+        &heap_props, heap_flags, &desc, res_states, NULL, IID_PPV_ARGS(&p_buffer->dx_resource));
     assert(SUCCEEDED(hres));
 
     if (p_buffer->host_visible)
@@ -690,9 +686,7 @@ void tr_internal_dx_create_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
     }
 }
 
-void tr_internal_dx_destroy_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
-{
-}
+void tr_internal_dx_destroy_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer) {}
 
 void tr_internal_dx_create_texture(tr_renderer* p_renderer, tr_texture* p_texture)
 {
@@ -829,10 +823,7 @@ void tr_internal_dx_create_texture(tr_renderer* p_renderer, tr_texture* p_textur
     }
 }
 
-void tr_internal_dx_destroy_texture(tr_renderer* p_renderer, tr_texture* p_texture)
-{
-
-}
+void tr_internal_dx_destroy_texture(tr_renderer* p_renderer, tr_texture* p_texture) {}
 
 void tr_internal_dx_create_sampler(tr_renderer* p_renderer, tr_sampler* p_sampler)
 {
@@ -1011,7 +1002,6 @@ void tr_internal_dx_create_shader_program(
 void tr_internal_dx_destroy_shader_program(tr_renderer* p_renderer,
                                            tr_shader_program* p_shader_program)
 {
-
 }
 
 void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
@@ -1235,9 +1225,9 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
     }
     assert(SUCCEEDED(hres));
 
-    hres = p_renderer->dx_device->CreateRootSignature(
-        0, sig_blob->GetBufferPointer(), sig_blob->GetBufferSize(),
-        IID_PPV_ARGS(&p_pipeline->dx_root_signature));
+    hres = p_renderer->dx_device->CreateRootSignature(0, sig_blob->GetBufferPointer(),
+                                                      sig_blob->GetBufferSize(),
+                                                      IID_PPV_ARGS(&p_pipeline->dx_root_signature));
     assert(SUCCEEDED(hres));
 }
 
@@ -1613,9 +1603,7 @@ void tr_internal_dx_create_compute_pipeline(tr_renderer* p_renderer,
                                                  p_pipeline);
 }
 
-void tr_internal_dx_destroy_pipeline(tr_renderer* p_renderer, tr_pipeline* p_pipeline)
-{
-}
+void tr_internal_dx_destroy_pipeline(tr_renderer* p_renderer, tr_pipeline* p_pipeline) {}
 
 void tr_internal_dx_create_render_target(tr_renderer* p_renderer, bool is_swapchain,
                                          tr_render_target* p_render_target)
@@ -1655,7 +1643,8 @@ void tr_internal_dx_create_render_target(tr_renderer* p_renderer, bool is_swapch
                        p_render_target->color_attachments_multisample[i]->dx_resource.Get());
 
                 p_renderer->dx_device->CreateRenderTargetView(
-                    p_render_target->color_attachments_multisample[i]->dx_resource.Get(), NULL, handle);
+                    p_render_target->color_attachments_multisample[i]->dx_resource.Get(), NULL,
+                    handle);
             }
             else
             {
@@ -1693,7 +1682,8 @@ void tr_internal_dx_create_render_target(tr_renderer* p_renderer, bool is_swapch
                    p_render_target->depth_stencil_attachment_multisample->dx_resource.Get());
 
             p_renderer->dx_device->CreateDepthStencilView(
-                p_render_target->depth_stencil_attachment_multisample->dx_resource.Get(), NULL, handle);
+                p_render_target->depth_stencil_attachment_multisample->dx_resource.Get(), NULL,
+                handle);
         }
         else
         {
