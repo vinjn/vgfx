@@ -58,8 +58,7 @@ COMPILING & LINKING
 
 */
 
-#ifndef TINY_RENDERER_VK_H
-#define TINY_RENDERER_VK_H
+#pragma once
 
 #include <assert.h>
 #include <stdbool.h>
@@ -87,16 +86,6 @@ COMPILING & LINKING
 #endif
 
 #include <vulkan/vulkan.h>
-
-#if defined(__cplusplus) && defined(TINY_RENDERER_CPP_NAMESPACE)
-namespace TINY_RENDERER_CPP_NAMESPACE {
-#endif
-
-#if defined(__cplusplus)
-    #define tr_api_export extern "C"
-#else 
-    #define tr_api_export 
-#endif
 
 #if ! defined(TINY_RENDERER_CUSTOM_MAX)
 enum {
@@ -596,109 +585,103 @@ typedef bool(*tr_image_resize_float_fn)(uint32_t src_width, uint32_t src_height,
                                         uint32_t channel_cout, void* p_user_data);
 
 // API functions
-tr_api_export void tr_create_renderer(const char* app_name, const tr_renderer_settings* p_settings, tr_renderer** pp_renderer);
-tr_api_export void tr_destroy_renderer(tr_renderer* p_renderer);
+void tr_create_renderer(const char* app_name, const tr_renderer_settings* p_settings, tr_renderer** pp_renderer);
+void tr_destroy_renderer(tr_renderer* p_renderer);
 
-tr_api_export void tr_create_fence(tr_renderer* p_renderer, tr_fence** pp_fence);
-tr_api_export void tr_destroy_fence(tr_renderer* p_renderer, tr_fence* p_fence);
+void tr_create_fence(tr_renderer* p_renderer, tr_fence** pp_fence);
+void tr_destroy_fence(tr_renderer* p_renderer, tr_fence* p_fence);
 
-tr_api_export void tr_create_semaphore(tr_renderer* p_renderer, tr_semaphore** pp_semaphore);
-tr_api_export void tr_destroy_semaphore(tr_renderer* p_renderer, tr_semaphore* p_semaphore);
+void tr_create_semaphore(tr_renderer* p_renderer, tr_semaphore** pp_semaphore);
+void tr_destroy_semaphore(tr_renderer* p_renderer, tr_semaphore* p_semaphore);
 
-tr_api_export void tr_create_descriptor_set(tr_renderer* p_renderer, uint32_t descriptor_count, const tr_descriptor* descriptors, tr_descriptor_set** pp_descriptor_set);
-tr_api_export void tr_destroy_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_descriptor_set);
+void tr_create_descriptor_set(tr_renderer* p_renderer, uint32_t descriptor_count, const tr_descriptor* descriptors, tr_descriptor_set** pp_descriptor_set);
+void tr_destroy_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_descriptor_set);
 
-tr_api_export void tr_create_cmd_pool(tr_renderer* p_renderer, tr_queue* p_queue, bool transient, tr_cmd_pool** pp_cmd_pool);
-tr_api_export void tr_destroy_cmd_pool(tr_renderer* p_renderer, tr_cmd_pool* p_cmd_pool);
+void tr_create_cmd_pool(tr_renderer* p_renderer, tr_queue* p_queue, bool transient, tr_cmd_pool** pp_cmd_pool);
+void tr_destroy_cmd_pool(tr_renderer* p_renderer, tr_cmd_pool* p_cmd_pool);
 
-tr_api_export void tr_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd** pp_cmd);
-tr_api_export void tr_destroy_cmd(tr_cmd_pool* p_cmd_pool, tr_cmd* p_cmd);
+void tr_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd** pp_cmd);
+void tr_destroy_cmd(tr_cmd_pool* p_cmd_pool, tr_cmd* p_cmd);
 
-tr_api_export void tr_create_cmd_n(tr_cmd_pool* p_cmd_pool, bool secondary, uint32_t cmd_count, tr_cmd*** ppp_cmd);
-tr_api_export void tr_destroy_cmd_n(tr_cmd_pool* p_cmd_pool, uint32_t cmd_count, tr_cmd** pp_cmd);
+void tr_create_cmd_n(tr_cmd_pool* p_cmd_pool, bool secondary, uint32_t cmd_count, tr_cmd*** ppp_cmd);
+void tr_destroy_cmd_n(tr_cmd_pool* p_cmd_pool, uint32_t cmd_count, tr_cmd** pp_cmd);
 
-tr_api_export void tr_create_buffer(tr_renderer* p_renderer, tr_buffer_usage usage, uint64_t size, bool host_visible, tr_buffer** pp_buffer);
-tr_api_export void tr_create_index_buffer(tr_renderer*p_renderer, uint64_t size, bool host_visible, tr_index_type index_type, tr_buffer** pp_buffer);
-tr_api_export void tr_create_uniform_buffer(tr_renderer* p_renderer, uint64_t size, bool host_visible, tr_buffer** pp_buffer);
-tr_api_export void tr_create_vertex_buffer(tr_renderer* p_renderer, uint64_t size, bool host_visible, uint32_t vertex_stride, tr_buffer** pp_buffer);
-tr_api_export void tr_create_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint64_t first_element, uint64_t element_count, uint64_t struct_stride, bool raw, tr_buffer** pp_buffer);
-tr_api_export void tr_create_rw_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint64_t first_element, uint64_t element_count, uint64_t struct_stride, bool raw, tr_buffer** pp_counter_buffer, tr_buffer** pp_buffer);
-tr_api_export void tr_destroy_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer);
+void tr_create_buffer(tr_renderer* p_renderer, tr_buffer_usage usage, uint64_t size, bool host_visible, tr_buffer** pp_buffer);
+void tr_create_index_buffer(tr_renderer*p_renderer, uint64_t size, bool host_visible, tr_index_type index_type, tr_buffer** pp_buffer);
+void tr_create_uniform_buffer(tr_renderer* p_renderer, uint64_t size, bool host_visible, tr_buffer** pp_buffer);
+void tr_create_vertex_buffer(tr_renderer* p_renderer, uint64_t size, bool host_visible, uint32_t vertex_stride, tr_buffer** pp_buffer);
+void tr_create_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint64_t first_element, uint64_t element_count, uint64_t struct_stride, bool raw, tr_buffer** pp_buffer);
+void tr_create_rw_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint64_t first_element, uint64_t element_count, uint64_t struct_stride, bool raw, tr_buffer** pp_counter_buffer, tr_buffer** pp_buffer);
+void tr_destroy_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer);
 
-tr_api_export void tr_create_texture(tr_renderer* p_renderer, tr_texture_type type, uint32_t width, uint32_t height, uint32_t depth, tr_sample_count sample_count, tr_format format, uint32_t mip_levels, const tr_clear_value* p_clear_value, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
-tr_api_export void tr_create_texture_1d(tr_renderer* p_renderer, uint32_t width, tr_sample_count sample_count, tr_format format, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
-tr_api_export void tr_create_texture_2d(tr_renderer* p_renderer, uint32_t width, uint32_t height, tr_sample_count sample_count, tr_format format, uint32_t mip_levels, const tr_clear_value* p_clear_value, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
-tr_api_export void tr_create_texture_3d(tr_renderer* p_renderer, uint32_t width, uint32_t height, uint32_t depth, tr_sample_count sample_count, tr_format format, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
-tr_api_export void tr_destroy_texture(tr_renderer* p_renderer, tr_texture*p_texture);
+void tr_create_texture(tr_renderer* p_renderer, tr_texture_type type, uint32_t width, uint32_t height, uint32_t depth, tr_sample_count sample_count, tr_format format, uint32_t mip_levels, const tr_clear_value* p_clear_value, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
+void tr_create_texture_1d(tr_renderer* p_renderer, uint32_t width, tr_sample_count sample_count, tr_format format, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
+void tr_create_texture_2d(tr_renderer* p_renderer, uint32_t width, uint32_t height, tr_sample_count sample_count, tr_format format, uint32_t mip_levels, const tr_clear_value* p_clear_value, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
+void tr_create_texture_3d(tr_renderer* p_renderer, uint32_t width, uint32_t height, uint32_t depth, tr_sample_count sample_count, tr_format format, bool host_visible, tr_texture_usage_flags usage, tr_texture** pp_texture);
+void tr_destroy_texture(tr_renderer* p_renderer, tr_texture*p_texture);
 
-tr_api_export void tr_create_sampler(tr_renderer* p_renderer, tr_sampler** pp_sampler);
-tr_api_export void tr_destroy_sampler(tr_renderer* p_renderer, tr_sampler* p_sampler);
+void tr_create_sampler(tr_renderer* p_renderer, tr_sampler** pp_sampler);
+void tr_destroy_sampler(tr_renderer* p_renderer, tr_sampler* p_sampler);
 
-tr_api_export void tr_create_shader_program_n(tr_renderer* p_renderer, uint32_t vert_size, const void* vert_code, const char* vert_enpt, uint32_t tesc_size, const void* tesc_code, const char* tesc_enpt, uint32_t tese_size, const void* tese_code, const char* tese_enpt, uint32_t geom_size, const void* geom_code, const char* geom_enpt, uint32_t frag_size, const void* frag_code, const char* frag_enpt, uint32_t comp_size, const void* comp_code, const char* comp_enpt, tr_shader_program** pp_shader_program);
-tr_api_export void tr_create_shader_program(tr_renderer* p_renderer, uint32_t vert_size, const void* vert_code, const char* vert_enpt, uint32_t frag_size, const void* frag_code, const char* frag_enpt, tr_shader_program** p_shader_program);
-tr_api_export void tr_create_shader_program_compute(tr_renderer* p_renderer, uint32_t comp_size, const void* comp_code, const char* comp_enpt, tr_shader_program** pp_shader_program);
-tr_api_export void tr_destroy_shader_program(tr_renderer* p_renderer, tr_shader_program* p_shader_program);
+void tr_create_shader_program_n(tr_renderer* p_renderer, uint32_t vert_size, const void* vert_code, const char* vert_enpt, uint32_t tesc_size, const void* tesc_code, const char* tesc_enpt, uint32_t tese_size, const void* tese_code, const char* tese_enpt, uint32_t geom_size, const void* geom_code, const char* geom_enpt, uint32_t frag_size, const void* frag_code, const char* frag_enpt, uint32_t comp_size, const void* comp_code, const char* comp_enpt, tr_shader_program** pp_shader_program);
+void tr_create_shader_program(tr_renderer* p_renderer, uint32_t vert_size, const void* vert_code, const char* vert_enpt, uint32_t frag_size, const void* frag_code, const char* frag_enpt, tr_shader_program** p_shader_program);
+void tr_create_shader_program_compute(tr_renderer* p_renderer, uint32_t comp_size, const void* comp_code, const char* comp_enpt, tr_shader_program** pp_shader_program);
+void tr_destroy_shader_program(tr_renderer* p_renderer, tr_shader_program* p_shader_program);
 
-tr_api_export void tr_create_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, const tr_vertex_layout* p_vertex_layout, tr_descriptor_set* p_descriptor_set, tr_render_target* p_render_target, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline);
-tr_api_export void tr_create_compute_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, tr_descriptor_set* p_descriptor_set, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline);
-tr_api_export void tr_destroy_pipeline(tr_renderer* p_renderer, tr_pipeline* p_pipeline);
+void tr_create_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, const tr_vertex_layout* p_vertex_layout, tr_descriptor_set* p_descriptor_set, tr_render_target* p_render_target, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline);
+void tr_create_compute_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, tr_descriptor_set* p_descriptor_set, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline);
+void tr_destroy_pipeline(tr_renderer* p_renderer, tr_pipeline* p_pipeline);
 
-tr_api_export void tr_create_render_target(tr_renderer* p_renderer, uint32_t width, uint32_t height, tr_sample_count sample_count, tr_format color_format, uint32_t color_attachment_count, const tr_clear_value* color_clear_values, tr_format depth_stencil_format, const tr_clear_value* depth_stencil_clear_value, tr_render_target** pp_render_target);
-tr_api_export void tr_destroy_render_target(tr_renderer* p_renderer, tr_render_target* p_render_target);
+void tr_create_render_target(tr_renderer* p_renderer, uint32_t width, uint32_t height, tr_sample_count sample_count, tr_format color_format, uint32_t color_attachment_count, const tr_clear_value* color_clear_values, tr_format depth_stencil_format, const tr_clear_value* depth_stencil_clear_value, tr_render_target** pp_render_target);
+void tr_destroy_render_target(tr_renderer* p_renderer, tr_render_target* p_render_target);
 
-tr_api_export void tr_update_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_descriptor_set);
+void tr_update_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_descriptor_set);
 
-tr_api_export void tr_begin_cmd(tr_cmd* p_cmd);
-tr_api_export void tr_end_cmd(tr_cmd* p_cmd);
-tr_api_export void tr_cmd_begin_render(tr_cmd* p_cmd, tr_render_target* p_render_target);
-tr_api_export void tr_cmd_end_render(tr_cmd* p_cmd);
-tr_api_export void tr_cmd_set_viewport(tr_cmd* p_cmd, float x, float, float width, float height, float min_depth, float max_depth);
-tr_api_export void tr_cmd_set_scissor(tr_cmd* p_cmd, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
-tr_api_export void tr_cmd_set_line_width(tr_cmd* p_cmd, float line_width);
-tr_api_export void tr_cmd_clear_color_attachment(tr_cmd* p_cmd, uint32_t attachment_index, const tr_clear_value* clear_value);
-tr_api_export void tr_cmd_clear_depth_stencil_attachment(tr_cmd* p_cmd, const tr_clear_value* clear_value);
-tr_api_export void tr_cmd_bind_pipeline(tr_cmd* p_cmd, tr_pipeline* p_pipeline);
-tr_api_export void tr_cmd_bind_descriptor_sets(tr_cmd* p_cmd, tr_pipeline* p_pipeline, tr_descriptor_set* p_descriptor_set);
-tr_api_export void tr_cmd_bind_index_buffer(tr_cmd* p_cmd, tr_buffer* p_buffer);
-tr_api_export void tr_cmd_bind_vertex_buffers(tr_cmd* p_cmd, uint32_t buffer_count, tr_buffer** pp_buffers);
-tr_api_export void tr_cmd_draw(tr_cmd* p_cmd, uint32_t vertex_count, uint32_t first_vertex);
-tr_api_export void tr_cmd_draw_indexed(tr_cmd* p_cmd, uint32_t index_count, uint32_t first_index);
-tr_api_export void tr_cmd_draw_mesh(tr_cmd* p_cmd, const tr_mesh* p_mesh);
-tr_api_export void tr_cmd_buffer_transition(tr_cmd* p_cmd, tr_buffer* p_buffer, tr_buffer_usage old_usage, tr_buffer_usage new_usage);
-tr_api_export void tr_cmd_image_transition(tr_cmd* p_cmd, tr_texture* p_texture, tr_texture_usage old_usage, tr_texture_usage new_usage);
-tr_api_export void tr_cmd_render_target_transition(tr_cmd* p_cmd, tr_render_target* p_render_target, tr_texture_usage old_usage, tr_texture_usage new_usage);
-tr_api_export void tr_cmd_depth_stencil_transition(tr_cmd* p_cmd, tr_render_target* p_render_target, tr_texture_usage old_usage, tr_texture_usage new_usage);
-tr_api_export void tr_cmd_dispatch(tr_cmd* p_cmd, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z);
-tr_api_export void tr_cmd_copy_buffer_to_texture2d(tr_cmd* p_cmd, uint32_t width, uint32_t height, uint32_t row_pitch, uint64_t buffer_offset, uint32_t mip_level, tr_buffer* p_buffer, tr_texture* p_texture);
+void tr_begin_cmd(tr_cmd* p_cmd);
+void tr_end_cmd(tr_cmd* p_cmd);
+void tr_cmd_begin_render(tr_cmd* p_cmd, tr_render_target* p_render_target);
+void tr_cmd_end_render(tr_cmd* p_cmd);
+void tr_cmd_set_viewport(tr_cmd* p_cmd, float x, float, float width, float height, float min_depth, float max_depth);
+void tr_cmd_set_scissor(tr_cmd* p_cmd, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+void tr_cmd_set_line_width(tr_cmd* p_cmd, float line_width);
+void tr_cmd_clear_color_attachment(tr_cmd* p_cmd, uint32_t attachment_index, const tr_clear_value* clear_value);
+void tr_cmd_clear_depth_stencil_attachment(tr_cmd* p_cmd, const tr_clear_value* clear_value);
+void tr_cmd_bind_pipeline(tr_cmd* p_cmd, tr_pipeline* p_pipeline);
+void tr_cmd_bind_descriptor_sets(tr_cmd* p_cmd, tr_pipeline* p_pipeline, tr_descriptor_set* p_descriptor_set);
+void tr_cmd_bind_index_buffer(tr_cmd* p_cmd, tr_buffer* p_buffer);
+void tr_cmd_bind_vertex_buffers(tr_cmd* p_cmd, uint32_t buffer_count, tr_buffer** pp_buffers);
+void tr_cmd_draw(tr_cmd* p_cmd, uint32_t vertex_count, uint32_t first_vertex);
+void tr_cmd_draw_indexed(tr_cmd* p_cmd, uint32_t index_count, uint32_t first_index);
+void tr_cmd_draw_mesh(tr_cmd* p_cmd, const tr_mesh* p_mesh);
+void tr_cmd_buffer_transition(tr_cmd* p_cmd, tr_buffer* p_buffer, tr_buffer_usage old_usage, tr_buffer_usage new_usage);
+void tr_cmd_image_transition(tr_cmd* p_cmd, tr_texture* p_texture, tr_texture_usage old_usage, tr_texture_usage new_usage);
+void tr_cmd_render_target_transition(tr_cmd* p_cmd, tr_render_target* p_render_target, tr_texture_usage old_usage, tr_texture_usage new_usage);
+void tr_cmd_depth_stencil_transition(tr_cmd* p_cmd, tr_render_target* p_render_target, tr_texture_usage old_usage, tr_texture_usage new_usage);
+void tr_cmd_dispatch(tr_cmd* p_cmd, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z);
+void tr_cmd_copy_buffer_to_texture2d(tr_cmd* p_cmd, uint32_t width, uint32_t height, uint32_t row_pitch, uint64_t buffer_offset, uint32_t mip_level, tr_buffer* p_buffer, tr_texture* p_texture);
 
-tr_api_export void tr_acquire_next_image(tr_renderer* p_renderer, tr_semaphore* p_signal_semaphore, tr_fence* p_fence);
-tr_api_export void tr_queue_submit(tr_queue* p_queue, uint32_t cmd_count, tr_cmd** pp_cmds, uint32_t wait_semaphore_count, tr_semaphore** pp_wait_semaphores, uint32_t signal_semaphore_count, tr_semaphore** pp_signal_semaphores);
-tr_api_export void tr_queue_present(tr_queue* p_queue, uint32_t wait_semaphore_count, tr_semaphore** pp_wait_semaphores);
-tr_api_export void tr_queue_wait_idle(tr_queue* p_queue);
+void tr_acquire_next_image(tr_renderer* p_renderer, tr_semaphore* p_signal_semaphore, tr_fence* p_fence);
+void tr_queue_submit(tr_queue* p_queue, uint32_t cmd_count, tr_cmd** pp_cmds, uint32_t wait_semaphore_count, tr_semaphore** pp_wait_semaphores, uint32_t signal_semaphore_count, tr_semaphore** pp_signal_semaphores);
+void tr_queue_present(tr_queue* p_queue, uint32_t wait_semaphore_count, tr_semaphore** pp_wait_semaphores);
+void tr_queue_wait_idle(tr_queue* p_queue);
 
-tr_api_export void tr_render_target_set_color_clear_value(tr_render_target* p_render_target, uint32_t attachment_index, float r, float g, float b, float a);
-tr_api_export void tr_render_target_set_depth_stencil_clear_value(tr_render_target* p_render_target, float depth, uint8_t stencil);
+void tr_render_target_set_color_clear_value(tr_render_target* p_render_target, uint32_t attachment_index, float r, float g, float b, float a);
+void tr_render_target_set_depth_stencil_clear_value(tr_render_target* p_render_target, float depth, uint8_t stencil);
 
-tr_api_export bool      tr_vertex_layout_support_format(tr_format format);
-tr_api_export uint32_t  tr_vertex_layout_stride(const tr_vertex_layout* p_vertex_layout);
+bool      tr_vertex_layout_support_format(tr_format format);
+uint32_t  tr_vertex_layout_stride(const tr_vertex_layout* p_vertex_layout);
 
 // Utility functions
-tr_api_export uint32_t           tr_util_calc_mip_levels(uint32_t width, uint32_t height);
-tr_api_export VkFormat           tr_util_to_vk_format(tr_format format);
-tr_api_export tr_format          tr_util_from_vk_format(VkFormat fomat);
-tr_api_export uint32_t           tr_util_format_stride(tr_format format);
-tr_api_export uint32_t           tr_util_format_channel_count(tr_format format);
-tr_api_export VkShaderStageFlags tr_util_to_vk_shader_stages(tr_shader_stage shader_stages);
-tr_api_export void               tr_util_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage, tr_buffer_usage new_usage);
-tr_api_export void               tr_util_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage, tr_texture_usage new_usage);
-tr_api_export void               tr_util_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, uint32_t count, tr_buffer* p_buffer);
-tr_api_export void               tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer);
-tr_api_export void               tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data, tr_buffer* p_buffer);
-tr_api_export void               tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height, uint32_t src_row_stride, const uint8_t* p_src_data, uint32_t src_channel_count, tr_texture* p_texture, tr_image_resize_uint8_fn resize_fn, void* p_user_data);
-tr_api_export void               tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height, uint32_t src_row_stride, const float* p_src_data, uint32_t channels, tr_texture* p_texture, tr_image_resize_float_fn resize_fn, void* p_user_data);
-
-#if defined(__cplusplus) && defined(TINY_RENDERER_CPP_NAMESPACE)
-} // namespace TINY_RENDERER_CPP_NAMESPACE
-#endif
-
-#endif // TINY_RENDERER_VK_H
+uint32_t           tr_util_calc_mip_levels(uint32_t width, uint32_t height);
+VkFormat           tr_util_to_vk_format(tr_format format);
+tr_format          tr_util_from_vk_format(VkFormat fomat);
+uint32_t           tr_util_format_stride(tr_format format);
+uint32_t           tr_util_format_channel_count(tr_format format);
+VkShaderStageFlags tr_util_to_vk_shader_stages(tr_shader_stage shader_stages);
+void               tr_util_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage, tr_buffer_usage new_usage);
+void               tr_util_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage, tr_texture_usage new_usage);
+void               tr_util_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, uint32_t count, tr_buffer* p_buffer);
+void               tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer);
+void               tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data, tr_buffer* p_buffer);
+void               tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height, uint32_t src_row_stride, const uint8_t* p_src_data, uint32_t src_channel_count, tr_texture* p_texture, tr_image_resize_uint8_fn resize_fn, void* p_user_data);
+void               tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height, uint32_t src_row_stride, const float* p_src_data, uint32_t channels, tr_texture* p_texture, tr_image_resize_float_fn resize_fn, void* p_user_data);

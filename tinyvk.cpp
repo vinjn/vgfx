@@ -1,4 +1,5 @@
 #include "tinyvk.h"
+#include "ptr_vector.h"
 
 #pragma comment(lib, "vulkan-1.lib")
 
@@ -116,231 +117,6 @@ void tr_internal_vk_queue_submit(tr_queue* p_queue, uint32_t cmd_count, tr_cmd**
 void tr_internal_vk_queue_present(tr_queue* p_queue, uint32_t wait_semaphore_count, tr_semaphore** pp_wait_semaphores);
 void tr_internal_vk_queue_wait_idle(tr_queue* p_queue);
 
-
-// -------------------------------------------------------------------------------------------------
-// ptr_vector (begin)
-// -------------------------------------------------------------------------------------------------
-typedef void(*pfn_ptr_vector_destroy_elem)(void*);
-
-typedef struct ptr_vector {
-    size_t                      _size;
-    size_t                      _capacity;
-    void**                      _data;
-    pfn_ptr_vector_destroy_elem _destroy_elem_fn;
-} ptr_vector;
-
-bool ptr_vector_create(ptr_vector** pp_vector, pfn_ptr_vector_destroy_elem pfn_destroy_elem)
-{
-    if (NULL == pfn_destroy_elem) {
-        return false;
-    }
-
-    ptr_vector* p_vector = (ptr_vector*)calloc(1, sizeof(*p_vector));
-    if (NULL == p_vector) {
-        return false;
-    }
-
-    p_vector->_size = 0;
-    p_vector->_capacity = 0;
-    p_vector->_destroy_elem_fn = pfn_destroy_elem;
-    *pp_vector = p_vector;
-
-    return true;
-}
-
-bool ptr_vector_resize(ptr_vector* p_vector, size_t n)
-{
-    if (NULL == p_vector) {
-        return false;
-    }
-
-    size_t new_capacity = ((7 * n) / 4) + (n > 0 ? 1 : 0);
-    void** new_data = NULL;
-    if ((new_capacity != p_vector->_capacity) && (new_capacity > 0)) {
-        new_data = (void**)calloc(new_capacity, sizeof(*new_data));
-        if (NULL == new_data) {
-            return false;
-        }
-    }
-
-    if (NULL != new_data) {
-        if (p_vector->_size > 0) {
-            if (NULL == p_vector->_data) {
-                return false;
-            }
-
-            void* ret = memcpy(new_data,
-                p_vector->_data, p_vector->_size * sizeof(*(p_vector->_data)));
-            if (ret != new_data) {
-                return false;
-            }
-        }
-
-        if (n < p_vector->_size) {
-            pfn_ptr_vector_destroy_elem destroy_elem_fn = p_vector->_destroy_elem_fn;
-            for (size_t i = n; i < p_vector->_size; ++i) {
-                if (NULL != destroy_elem_fn) {
-                    destroy_elem_fn(p_vector->_data[i]);
-                }
-                p_vector->_data[i] = NULL;
-            }
-        }
-
-        if (NULL != p_vector->_data) {
-            free(p_vector->_data);
-        }
-
-        p_vector->_size = n;
-        p_vector->_capacity = new_capacity;
-        p_vector->_data = new_data;
-    }
-
-    return true;
-}
-
-bool ptr_vector_push_back(ptr_vector* p_vector, void* p)
-{
-    if ((NULL == p_vector) || (NULL == p)) {
-        return false;
-    }
-
-    size_t new_size = p_vector->_size + 1;
-    if (new_size >= p_vector->_capacity) {
-        bool ret = ptr_vector_resize(p_vector, new_size);
-        if (!ret) {
-            return false;
-        }
-    }
-
-    p_vector->_size = new_size;
-    p_vector->_data[new_size - 1] = p;
-
-    return true;
-}
-
-bool ptr_vector_erase(ptr_vector* p_vector, void* p)
-{
-    if ((NULL == p_vector) || (NULL == p)) {
-        return false;
-    }
-
-    size_t n = (size_t)-1;
-    for (size_t i = 0; i < p_vector->_size; ++i) {
-        if (p == p_vector->_data[i]) {
-            n = i;
-            break;
-        }
-    }
-
-    if ((((size_t)-1) != n) && (NULL != p_vector->_data)) {
-        if (n > 0) {
-            for (size_t i = 0; i < (n - 1); ++i) {
-                p_vector->_data[i] = p_vector->_data[i + 1];
-            }
-        }
-
-        if (n < (p_vector->_size - 1)) {
-            for (size_t i = n; i < p_vector->_size; ++i) {
-                p_vector->_data[i] = p_vector->_data[i + 1];
-            }
-        }
-
-        for (size_t i = (p_vector->_size - 1); i < p_vector->_capacity; ++i) {
-            p_vector->_data[i] = NULL;
-        }
-
-        pfn_ptr_vector_destroy_elem destroy_elem_fn = p_vector->_destroy_elem_fn;
-        if (NULL != destroy_elem_fn) {
-            destroy_elem_fn(p);
-        }
-
-        p_vector->_size -= 1;
-
-        if ((p_vector->_size < (p_vector->_capacity)) && (p_vector->_capacity > 10)) {
-            bool ret = ptr_vector_resize(p_vector, p_vector->_size);
-            if (!ret) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-bool ptr_vector_remove(ptr_vector* p_vector, void* p)
-{
-    if ((NULL == p_vector) || (NULL == p)) {
-        return false;
-    }
-
-    size_t n = (size_t)-1;
-    for (size_t i = 0; i < p_vector->_size; ++i) {
-        if (p == p_vector->_data[i]) {
-            n = i;
-            break;
-        }
-    }
-
-    if ((((size_t)-1) != n) && (NULL != p_vector->_data)) {
-        if (n > 0) {
-            for (size_t i = 0; i < (n - 1); ++i) {
-                p_vector->_data[i] = p_vector->_data[i + 1];
-            }
-        }
-
-        if (n < (p_vector->_size - 1)) {
-            for (size_t i = n; i < p_vector->_size; ++i) {
-                p_vector->_data[i] = p_vector->_data[i + 1];
-            }
-        }
-
-        for (size_t i = (p_vector->_size - 1); i < p_vector->_capacity; ++i) {
-            p_vector->_data[i] = NULL;
-        }
-
-        p_vector->_size -= 1;
-
-        if ((p_vector->_size < (p_vector->_capacity)) && (p_vector->_capacity > 10)) {
-            bool ret = ptr_vector_resize(p_vector, p_vector->_size);
-            if (!ret) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-
-bool ptr_vector_destroy(ptr_vector* p_vector)
-{
-    if (NULL == p_vector) {
-        return false;
-    }
-
-    if ((p_vector->_capacity > 0) && (NULL != p_vector->_data)) {
-        if (p_vector->_size > 0) {
-            pfn_ptr_vector_destroy_elem destroy_elem_fn = p_vector->_destroy_elem_fn;
-            for (size_t i = 0; i < p_vector->_size; ++i) {
-                if (NULL != destroy_elem_fn) {
-                    destroy_elem_fn(p_vector->_data[i]);
-                }
-                p_vector->_data[i] = NULL;
-            }
-            p_vector->_size = 0;
-            p_vector->_destroy_elem_fn = NULL;
-        }
-        p_vector->_capacity = 0;
-        free(p_vector->_data);
-        p_vector->_data = NULL;
-    }
-    free(p_vector);
-
-    return true;
-}
-// -------------------------------------------------------------------------------------------------
-// ptr_vector (end)
-// -------------------------------------------------------------------------------------------------
 
 // Internal singleton 
 typedef struct tr_internal_data {
@@ -1015,7 +791,7 @@ void tr_create_shader_program_n(tr_renderer* p_renderer, uint32_t vert_size, con
     *pp_shader_program = p_shader_program;
 }
 
-void tr_create_shader_program(tr_renderer* p_renderer, uint32_t vert_size, const uint32_t* vert_code, const char* vert_enpt, uint32_t frag_size, const uint32_t* frag_code, const char* frag_enpt, tr_shader_program** pp_shader_program)
+void tr_create_shader_program(tr_renderer* p_renderer, uint32_t vert_size, const void* vert_code, const char* vert_enpt, uint32_t frag_size, const void* frag_code, const char* frag_enpt, tr_shader_program** pp_shader_program)
 {
     tr_create_shader_program_n(p_renderer, vert_size, vert_code, vert_enpt, 0, NULL, NULL, 0, NULL, NULL, 0, NULL, NULL, frag_size, frag_code, frag_enpt, 0, NULL, NULL, pp_shader_program);
 }
@@ -1049,7 +825,7 @@ void tr_create_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_pro
     *pp_pipeline = p_pipeline;
 }
 
-tr_api_export void tr_create_compute_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, tr_descriptor_set* p_descriptor_set, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline)
+void tr_create_compute_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, tr_descriptor_set* p_descriptor_set, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline)
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
     assert(NULL != p_shader_program);
@@ -1507,7 +1283,7 @@ uint32_t tr_util_calc_mip_levels(uint32_t width, uint32_t height)
     return result;
 }
 
-tr_api_export VkFormat tr_util_to_vk_format(tr_format format)
+VkFormat tr_util_to_vk_format(tr_format format)
 {
     VkFormat result = VK_FORMAT_UNDEFINED;
     switch (format) {

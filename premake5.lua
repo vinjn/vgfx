@@ -79,7 +79,9 @@ solution "vgfx"
         kind "StaticLib"
 
         files {
+            "ptr_vector.*",
             "tinyvk.*",
+            "tinydx.*",
         }
 
         libdirs {
@@ -125,13 +127,11 @@ solution "vgfx"
                 links {
                     "vgfx-d",
                     "glfw-d",
-                    "vulkan-1",
                 }
 
             configuration "Release"
                 links {
                     "vgfx",
-                    "vulkan-1",
                     "glfw",
                 }
 
