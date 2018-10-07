@@ -57,10 +57,10 @@ NOTES:
 
 #pragma once
 
-#include <stdint.h>
 #include <assert.h>
-#include <vector>
+#include <stdint.h>
 #include <string>
+#include <vector>
 
 #if defined(__linux__)
 #define TINY_RENDERER_LINUX
@@ -420,20 +420,27 @@ struct tr_renderer_settings
     // tr_string_list                      device_layers;
     tr_string_list device_extensions;
     PFN_vkDebugReportCallbackEXT vk_debug_fn;
+
+#if defined(TINY_RENDERER_MSW)
     D3D_FEATURE_LEVEL dx_feature_level;
     tr_dx_shader_target dx_shader_target;
+#endif
 };
 
 struct tr_fence
 {
     VkFence vk_fence;
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12Fence> dx_fence;
+#endif
 };
 
 struct tr_semaphore
 {
     VkSemaphore vk_semaphore;
+#if defined(TINY_RENDERER_MSW)
     void* dx_semaphore;
+#endif
 };
 
 struct tr_queue
@@ -442,11 +449,13 @@ struct tr_queue
 
     VkQueue vk_queue;
     uint32_t vk_queue_family_index;
-    ComPtr<ID3D12CommandQueue> dx_queue;
 
+#if defined(TINY_RENDERER_MSW)
+    ComPtr<ID3D12CommandQueue> dx_queue;
     HANDLE dx_wait_idle_fence_event;
     ComPtr<ID3D12Fence> dx_wait_idle_fence;
     UINT64 dx_wait_idle_fence_value;
+#endif
 };
 
 struct tr_renderer
@@ -473,7 +482,7 @@ struct tr_renderer
     VkSwapchainKHR vk_swapchain;
     VkDebugReportCallbackEXT vk_debug_report;
     bool vk_device_ext_VK_AMD_negative_viewport_height;
-
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12Debug> dx_debug_ctrl;
     // Use IDXGIFactory4 for now since IDXGIFactory5
     // creates problems for the Visual Studio graphics
@@ -486,6 +495,7 @@ struct tr_renderer
     // Use IDXGISwapChain3 for now since IDXGISwapChain4
     // isn't supported by older devices.
     ComPtr<IDXGISwapChain3> dx_swapchain;
+#endif
 };
 
 struct tr_descriptor
@@ -498,9 +508,10 @@ struct tr_descriptor
     tr_texture* textures[tr_max_descriptor_entries];
     tr_sampler* samplers[tr_max_descriptor_entries];
     tr_buffer* buffers[tr_max_descriptor_entries];
-
+#if defined(TINY_RENDERER_MSW)
     uint32_t dx_heap_offset;
     uint32_t dx_root_parameter_index;
+#endif
 };
 
 struct tr_descriptor_set
@@ -510,23 +521,28 @@ struct tr_descriptor_set
     VkDescriptorSetLayout vk_descriptor_set_layout;
     VkDescriptorSet vk_descriptor_set;
     VkDescriptorPool vk_descriptor_pool;
-
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12DescriptorHeap> dx_cbvsrvuav_heap;
     ComPtr<ID3D12DescriptorHeap> dx_sampler_heap;
+#endif
 };
 
 struct tr_cmd_pool
 {
     tr_renderer* renderer;
     VkCommandPool vk_cmd_pool;
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12CommandAllocator> dx_cmd_alloc;
+#endif
 };
 
 struct tr_cmd
 {
     tr_cmd_pool* cmd_pool;
     VkCommandBuffer vk_cmd_buf;
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12GraphicsCommandList> dx_cmd_list;
+#endif
 };
 
 struct tr_buffer
@@ -549,13 +565,14 @@ struct tr_buffer
     VkDescriptorBufferInfo vk_buffer_info;
     // Used for uniform texel and storage texel buffers
     VkBufferView vk_buffer_view;
-
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12Resource> dx_resource;
     D3D12_CONSTANT_BUFFER_VIEW_DESC dx_cbv_view_desc;
     D3D12_SHADER_RESOURCE_VIEW_DESC dx_srv_view_desc;
     D3D12_UNORDERED_ACCESS_VIEW_DESC dx_uav_view_desc;
     D3D12_INDEX_BUFFER_VIEW dx_index_buffer_view;
     D3D12_VERTEX_BUFFER_VIEW dx_vertex_buffer_view;
+#endif
     // Counter buffer
     tr_buffer* counter_buffer;
 };
@@ -582,9 +599,11 @@ struct tr_texture
     VkImageAspectFlags vk_aspect_mask;
     VkDescriptorImageInfo vk_texture_view;
 
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12Resource> dx_resource;
     D3D12_SHADER_RESOURCE_VIEW_DESC dx_srv_view_desc;
     D3D12_UNORDERED_ACCESS_VIEW_DESC dx_uav_view_desc;
+#endif
 };
 
 struct tr_sampler
@@ -592,8 +611,9 @@ struct tr_sampler
     tr_renderer* renderer;
     VkSampler vk_sampler;
     VkDescriptorImageInfo vk_sampler_view;
-
+#if defined(TINY_RENDERER_MSW)
     D3D12_SAMPLER_DESC dx_sampler_desc;
+#endif
 };
 
 struct tr_shader_program
@@ -613,12 +633,14 @@ struct tr_shader_program
     std::string frag_entry_point;
     std::string comp_entry_point;
 
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3DBlob> dx_vert;
     ComPtr<ID3DBlob> dx_hull;
     ComPtr<ID3DBlob> dx_domn;
     ComPtr<ID3DBlob> dx_geom;
     ComPtr<ID3DBlob> dx_frag;
     ComPtr<ID3DBlob> dx_comp;
+#endif
 };
 
 struct tr_vertex_attrib
@@ -655,8 +677,10 @@ struct tr_pipeline
     VkPipelineLayout vk_pipeline_layout;
     VkPipeline vk_pipeline;
 
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12RootSignature> dx_root_signature;
     ComPtr<ID3D12PipelineState> dx_pipeline_state;
+#endif
 };
 
 struct tr_render_target
@@ -675,8 +699,10 @@ struct tr_render_target
     VkRenderPass vk_render_pass;
     VkFramebuffer vk_framebuffer;
 
+#if defined(TINY_RENDERER_MSW)
     ComPtr<ID3D12DescriptorHeap> dx_rtv_heap;
     ComPtr<ID3D12DescriptorHeap> dx_dsv_heap;
+#endif
 };
 
 struct tr_mesh
@@ -853,13 +879,8 @@ uint32_t tr_vertex_layout_stride(const tr_vertex_layout* p_vertex_layout);
 // Utility functions
 uint64_t tr_util_calc_storage_counter_offset(uint64_t buffer_size);
 uint32_t tr_util_calc_mip_levels(uint32_t width, uint32_t height);
-VkFormat tr_util_to_vk_format(tr_format format);
-tr_format tr_util_from_vk_format(VkFormat fomat);
-DXGI_FORMAT tr_util_to_dx_format(tr_format format);
-tr_format tr_util_from_dx_format(DXGI_FORMAT fomat);
 uint32_t tr_util_format_stride(tr_format format);
 uint32_t tr_util_format_channel_count(tr_format format);
-VkShaderStageFlags tr_util_to_vk_shader_stages(tr_shader_stage shader_stages);
 void tr_util_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage,
                                tr_buffer_usage new_usage);
 void tr_util_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage,
