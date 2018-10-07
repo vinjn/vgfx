@@ -1,7 +1,8 @@
 #include "dx_internal.h"
 #include "internal.h"
-#include "ptr_vector.h"
 #include "vk_internal.h"
+
+using namespace std;
 
 void tr_destroy_renderer(tr_renderer* p_renderer)
 {
@@ -9,35 +10,23 @@ void tr_destroy_renderer(tr_renderer* p_renderer)
     assert(NULL != s_tr_internal);
 
     // Destroy the swapchain render targets
-    if (NULL != p_renderer->swapchain_render_targets)
+    for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
     {
-        for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-        {
-            tr_destroy_render_target(p_renderer, p_renderer->swapchain_render_targets[i]);
-        }
+        tr_destroy_render_target(p_renderer, p_renderer->swapchain_render_targets[i]);
     }
 
     // Destroy render sync objects
-    if (NULL != p_renderer->image_acquired_fences)
+    for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
     {
-        for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-        {
-            tr_destroy_fence(p_renderer, p_renderer->image_acquired_fences[i]);
-        }
+        tr_destroy_fence(p_renderer, p_renderer->image_acquired_fences[i]);
     }
-    if (NULL != p_renderer->image_acquired_semaphores)
+    for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
     {
-        for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-        {
-            tr_destroy_semaphore(p_renderer, p_renderer->image_acquired_semaphores[i]);
-        }
+        tr_destroy_semaphore(p_renderer, p_renderer->image_acquired_semaphores[i]);
     }
-    if (NULL != p_renderer->render_complete_semaphores)
+    for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
     {
-        for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-        {
-            tr_destroy_semaphore(p_renderer, p_renderer->render_complete_semaphores[i]);
-        }
+        tr_destroy_semaphore(p_renderer, p_renderer->render_complete_semaphores[i]);
     }
 
     if (p_renderer->api == tr_api_vulkan)
@@ -47,7 +36,7 @@ void tr_destroy_renderer(tr_renderer* p_renderer)
         tr_internal_vk_destroy_device(p_renderer);
         tr_internal_vk_destroy_instance(p_renderer);
 
-        TINY_RENDERER_SAFE_FREE(s_tr_internal->renderer->present_queue);
+        delete s_tr_internal->renderer->present_queue;
     }
     else
     {
@@ -55,25 +44,22 @@ void tr_destroy_renderer(tr_renderer* p_renderer)
         // tr_internal_dx_destroy_surface(p_renderer);
         tr_internal_dx_destroy_device(p_renderer);
         // tr_internal_dx_destroy_instance(p_renderer);
+
+        // No need to destroy the present queue since it's just a pointer to the graphics queue
     }
     // Destroy the Vulkan bits
 
     // Free all the renderer components!
-    TINY_RENDERER_SAFE_FREE(p_renderer->swapchain_render_targets);
-    TINY_RENDERER_SAFE_FREE(s_tr_internal->renderer->image_acquired_fences);
-    TINY_RENDERER_SAFE_FREE(s_tr_internal->renderer->image_acquired_semaphores);
-    TINY_RENDERER_SAFE_FREE(s_tr_internal->renderer->render_complete_semaphores);
-    // No need to destroy the present queue since it's just a pointer to the graphics queue
-    TINY_RENDERER_SAFE_FREE(s_tr_internal->renderer->graphics_queue);
-    TINY_RENDERER_SAFE_FREE(s_tr_internal->renderer);
-    TINY_RENDERER_SAFE_FREE(s_tr_internal);
+    delete s_tr_internal->renderer->graphics_queue;
+    delete s_tr_internal->renderer;
+    delete s_tr_internal;
 }
 
 void tr_create_fence(tr_renderer* p_renderer, tr_fence** pp_fence)
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    tr_fence* p_fence = (tr_fence*)calloc(1, sizeof(*p_fence));
+    tr_fence* p_fence = new tr_fence();
     assert(NULL != p_fence);
 
     if (p_renderer->api == tr_api_vulkan)
@@ -94,14 +80,14 @@ void tr_destroy_fence(tr_renderer* p_renderer, tr_fence* p_fence)
     else
         tr_internal_dx_destroy_fence(p_renderer, p_fence);
 
-    TINY_RENDERER_SAFE_FREE(p_fence);
+    delete p_fence;
 }
 
 void tr_create_semaphore(tr_renderer* p_renderer, tr_semaphore** pp_semaphore)
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    tr_semaphore* p_semaphore = (tr_semaphore*)calloc(1, sizeof(*p_semaphore));
+    tr_semaphore* p_semaphore = new tr_semaphore();
     assert(NULL != p_semaphore);
 
     if (p_renderer->api == tr_api_vulkan)
@@ -122,7 +108,7 @@ void tr_destroy_semaphore(tr_renderer* p_renderer, tr_semaphore* p_semaphore)
     else
         tr_internal_dx_destroy_semaphore(p_renderer, p_semaphore);
 
-    TINY_RENDERER_SAFE_FREE(p_semaphore);
+    delete p_semaphore;
 }
 
 void tr_create_descriptor_set(tr_renderer* p_renderer, uint32_t descriptor_count,
@@ -131,12 +117,10 @@ void tr_create_descriptor_set(tr_renderer* p_renderer, uint32_t descriptor_count
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    tr_descriptor_set* p_descriptor_set = (tr_descriptor_set*)calloc(1, sizeof(*p_descriptor_set));
+    tr_descriptor_set* p_descriptor_set = new tr_descriptor_set();
     assert(NULL != p_descriptor_set);
 
-    p_descriptor_set->descriptors =
-        (tr_descriptor*)calloc(descriptor_count, sizeof(*(p_descriptor_set->descriptors)));
-    assert(NULL != p_descriptor_set->descriptors);
+    p_descriptor_set->descriptors = new tr_descriptor[descriptor_count]();
 
     p_descriptor_set->descriptor_count = descriptor_count;
     memcpy(p_descriptor_set->descriptors, p_descriptors,
@@ -160,14 +144,14 @@ void tr_destroy_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_des
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
     assert(NULL != p_descriptor_set);
 
-    TINY_RENDERER_SAFE_FREE(p_descriptor_set->descriptors);
+    delete[] p_descriptor_set->descriptors;
 
     if (p_renderer->api == tr_api_vulkan)
         tr_internal_vk_destroy_descriptor_set(p_renderer, p_descriptor_set);
     else
         tr_internal_dx_destroy_descriptor_set(p_renderer, p_descriptor_set);
 
-    TINY_RENDERER_SAFE_FREE(p_descriptor_set);
+    delete p_descriptor_set;
 }
 
 void tr_create_cmd_pool(tr_renderer* p_renderer, tr_queue* p_queue, bool transient,
@@ -175,7 +159,7 @@ void tr_create_cmd_pool(tr_renderer* p_renderer, tr_queue* p_queue, bool transie
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    tr_cmd_pool* p_cmd_pool = (tr_cmd_pool*)calloc(1, sizeof(*p_cmd_pool));
+    tr_cmd_pool* p_cmd_pool = new tr_cmd_pool();
     assert(NULL != p_cmd_pool);
 
     p_cmd_pool->renderer = p_renderer;
@@ -198,14 +182,14 @@ void tr_destroy_cmd_pool(tr_renderer* p_renderer, tr_cmd_pool* p_cmd_pool)
     else
         tr_internal_dx_destroy_cmd_pool(p_renderer, p_cmd_pool);
 
-    TINY_RENDERER_SAFE_FREE(p_cmd_pool);
+    delete p_cmd_pool;
 }
 
 void tr_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd** pp_cmd)
 {
     assert(NULL != p_cmd_pool);
 
-    tr_cmd* p_cmd = (tr_cmd*)calloc(1, sizeof(*p_cmd));
+    tr_cmd* p_cmd = new tr_cmd();
     assert(NULL != p_cmd);
 
     p_cmd->cmd_pool = p_cmd_pool;
@@ -228,14 +212,14 @@ void tr_destroy_cmd(tr_cmd_pool* p_cmd_pool, tr_cmd* p_cmd)
     else
         tr_internal_dx_destroy_cmd(p_cmd_pool, p_cmd);
 
-    TINY_RENDERER_SAFE_FREE(p_cmd);
+    delete p_cmd;
 }
 
 void tr_create_cmd_n(tr_cmd_pool* p_cmd_pool, bool secondary, uint32_t cmd_count, tr_cmd*** ppp_cmd)
 {
     assert(NULL != ppp_cmd);
 
-    tr_cmd** pp_cmd = (tr_cmd**)calloc(cmd_count, sizeof(*pp_cmd));
+    tr_cmd** pp_cmd = new tr_cmd*[cmd_count]();
     assert(NULL != pp_cmd);
 
     for (uint32_t i = 0; i < cmd_count; ++i)
@@ -255,7 +239,7 @@ void tr_destroy_cmd_n(tr_cmd_pool* p_cmd_pool, uint32_t cmd_count, tr_cmd** pp_c
         tr_destroy_cmd(p_cmd_pool, pp_cmd[i]);
     }
 
-    TINY_RENDERER_SAFE_FREE(pp_cmd);
+    delete[] pp_cmd;
 }
 
 void tr_create_buffer(tr_renderer* p_renderer, tr_buffer_usage usage, uint64_t size,
@@ -264,7 +248,7 @@ void tr_create_buffer(tr_renderer* p_renderer, tr_buffer_usage usage, uint64_t s
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
     assert(size > 0);
 
-    tr_buffer* p_buffer = (tr_buffer*)calloc(1, sizeof(*p_buffer));
+    tr_buffer* p_buffer = new tr_buffer();
     assert(NULL != p_buffer);
 
     p_buffer->renderer = p_renderer;
@@ -310,7 +294,7 @@ void tr_create_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint64_
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
     assert(size > 0);
 
-    tr_buffer* p_buffer = (tr_buffer*)calloc(1, sizeof(*p_buffer));
+    tr_buffer* p_buffer = new tr_buffer();
     assert(NULL != p_buffer);
 
     p_buffer->renderer = p_renderer;
@@ -341,7 +325,7 @@ void tr_create_rw_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint
     // Create counter buffer
     if (pp_counter_buffer != NULL)
     {
-        tr_buffer* p_counter_buffer = (tr_buffer*)calloc(1, sizeof(*p_counter_buffer));
+        tr_buffer* p_counter_buffer = new tr_buffer();
         assert(NULL != p_counter_buffer);
 
         p_counter_buffer->renderer = p_renderer;
@@ -363,7 +347,7 @@ void tr_create_rw_structured_buffer(tr_renderer* p_renderer, uint64_t size, uint
 
     // Create data buffer
     {
-        tr_buffer* p_buffer = (tr_buffer*)calloc(1, sizeof(*p_buffer));
+        tr_buffer* p_buffer = new tr_buffer();
         assert(NULL != p_buffer);
 
         p_buffer->renderer = p_renderer;
@@ -400,7 +384,7 @@ void tr_destroy_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
     else
         tr_internal_dx_destroy_buffer(p_renderer, p_buffer);
 
-    TINY_RENDERER_SAFE_FREE(p_buffer);
+    delete p_buffer;
 }
 
 void tr_create_texture(tr_renderer* p_renderer, tr_texture_type type, uint32_t width,
@@ -411,7 +395,7 @@ void tr_create_texture(tr_renderer* p_renderer, tr_texture_type type, uint32_t w
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
     assert((width > 0) && (height > 0) && (depth > 0));
 
-    tr_texture* p_texture = (tr_texture*)calloc(1, sizeof(*p_texture));
+    tr_texture* p_texture = new tr_texture();
     assert(NULL != p_texture);
 
     p_texture->renderer = p_renderer;
@@ -499,14 +483,14 @@ void tr_destroy_texture(tr_renderer* p_renderer, tr_texture* p_texture)
     else
         tr_internal_dx_destroy_texture(p_renderer, p_texture);
 
-    TINY_RENDERER_SAFE_FREE(p_texture);
+    delete p_texture;
 }
 
 void tr_create_sampler(tr_renderer* p_renderer, tr_sampler** pp_sampler)
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    tr_sampler* p_sampler = (tr_sampler*)calloc(1, sizeof(*p_sampler));
+    tr_sampler* p_sampler = new tr_sampler();
     assert(NULL != p_sampler);
 
     p_sampler->renderer = p_renderer;
@@ -529,7 +513,7 @@ void tr_destroy_sampler(tr_renderer* p_renderer, tr_sampler* p_sampler)
     else
         tr_internal_dx_destroy_sampler(p_renderer, p_sampler);
 
-    TINY_RENDERER_SAFE_FREE(p_sampler);
+    delete p_sampler;
 }
 
 void tr_create_shader_program_n(tr_renderer* p_renderer, uint32_t vert_size, const void* vert_code,
@@ -566,7 +550,7 @@ void tr_create_shader_program_n(tr_renderer* p_renderer, uint32_t vert_size, con
         assert(NULL != comp_code);
     }
 
-    tr_shader_program* p_shader_program = (tr_shader_program*)calloc(1, sizeof(*p_shader_program));
+    tr_shader_program* p_shader_program = new tr_shader_program();
     assert(NULL != p_shader_program);
 
     p_shader_program->renderer = p_renderer;
@@ -584,53 +568,34 @@ void tr_create_shader_program_n(tr_renderer* p_renderer, uint32_t vert_size, con
             domn_code, domn_enpt, geom_size, geom_code, geom_enpt, frag_size, frag_code, frag_enpt,
             comp_size, comp_code, comp_enpt, p_shader_program);
 
-        // TODO: ugly!!!
-        if ((vert_enpt != NULL) && (strlen(vert_enpt) > 0))
+        if (vert_enpt != NULL)
         {
-            p_shader_program->vert_entry_point =
-                (const char*)calloc(strlen(vert_enpt) + 1, sizeof(char));
-            assert(p_shader_program->vert_entry_point != NULL);
-            strncpy((char*)p_shader_program->vert_entry_point, vert_enpt, strlen(vert_enpt));
+            p_shader_program->vert_entry_point = vert_enpt;
         }
 
-        if ((hull_enpt != NULL) && (strlen(hull_enpt) > 0))
+        if (hull_enpt != NULL)
         {
-            p_shader_program->tesc_entry_point =
-                (const char*)calloc(strlen(hull_enpt) + 1, sizeof(char));
-            assert(p_shader_program->tesc_entry_point != NULL);
-            strncpy((char*)p_shader_program->tesc_entry_point, hull_enpt, strlen(hull_enpt));
+            p_shader_program->tesc_entry_point = hull_enpt;
         }
 
-        if ((domn_enpt != NULL) && (strlen(domn_enpt) > 0))
+        if (domn_enpt != NULL)
         {
-            p_shader_program->tese_entry_point =
-                (const char*)calloc(strlen(domn_enpt) + 1, sizeof(char));
-            assert(p_shader_program->tese_entry_point != NULL);
-            strncpy((char*)p_shader_program->tese_entry_point, domn_enpt, strlen(domn_enpt));
+            p_shader_program->tese_entry_point = domn_enpt;
         }
 
-        if ((geom_enpt != NULL) && (strlen(geom_enpt) > 0))
+        if (geom_enpt != NULL)
         {
-            p_shader_program->geom_entry_point =
-                (const char*)calloc(strlen(geom_enpt) + 1, sizeof(char));
-            assert(p_shader_program->geom_entry_point != NULL);
-            strncpy((char*)p_shader_program->geom_entry_point, geom_enpt, strlen(geom_enpt));
+            p_shader_program->geom_entry_point = geom_enpt;
         }
 
-        if ((frag_enpt != NULL) && (strlen(frag_enpt) > 0))
+        if (frag_enpt != NULL)
         {
-            p_shader_program->frag_entry_point =
-                (const char*)calloc(strlen(frag_enpt) + 1, sizeof(char));
-            assert(p_shader_program->frag_entry_point != NULL);
-            strncpy((char*)p_shader_program->frag_entry_point, frag_enpt, strlen(frag_enpt));
+            p_shader_program->frag_entry_point = frag_enpt;
         }
 
-        if ((comp_enpt != NULL) && (strlen(comp_enpt) > 0))
+        if (comp_enpt != NULL)
         {
-            p_shader_program->comp_entry_point =
-                (const char*)calloc(strlen(comp_enpt) + 1, sizeof(char));
-            assert(p_shader_program->comp_entry_point != NULL);
-            strncpy((char*)p_shader_program->comp_entry_point, comp_enpt, strlen(comp_enpt));
+            p_shader_program->comp_entry_point = comp_enpt;
         }
     }
     else
@@ -680,7 +645,7 @@ void tr_create_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_pro
     assert(NULL != p_render_target);
     assert(NULL != p_pipeline_settings);
 
-    tr_pipeline* p_pipeline = (tr_pipeline*)calloc(1, sizeof(*p_pipeline));
+    tr_pipeline* p_pipeline = new tr_pipeline();
     assert(NULL != p_pipeline);
 
     memcpy(&(p_pipeline->settings), p_pipeline_settings, sizeof(*p_pipeline_settings));
@@ -707,7 +672,7 @@ void tr_create_compute_pipeline(tr_renderer* p_renderer, tr_shader_program* p_sh
     assert(NULL != p_shader_program);
     assert(NULL != p_pipeline_settings);
 
-    tr_pipeline* p_pipeline = (tr_pipeline*)calloc(1, sizeof(*p_pipeline));
+    tr_pipeline* p_pipeline = new tr_pipeline();
     assert(NULL != p_pipeline);
 
     memcpy(&(p_pipeline->settings), p_pipeline_settings, sizeof(*p_pipeline_settings));
@@ -733,7 +698,7 @@ void tr_destroy_pipeline(tr_renderer* p_renderer, tr_pipeline* p_pipeline)
     else
         tr_internal_dx_destroy_pipeline(p_renderer, p_pipeline);
 
-    TINY_RENDERER_SAFE_FREE(p_pipeline);
+    delete p_pipeline;
 }
 
 void tr_create_render_target(tr_renderer* p_renderer, uint32_t width, uint32_t height,
@@ -746,7 +711,7 @@ void tr_create_render_target(tr_renderer* p_renderer, uint32_t width, uint32_t h
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    tr_render_target* p_render_target = (tr_render_target*)calloc(1, sizeof(*p_render_target));
+    tr_render_target* p_render_target = new tr_render_target();
     assert(NULL != p_render_target);
 
     p_render_target->renderer = p_renderer;
@@ -844,7 +809,7 @@ void tr_destroy_render_target(tr_renderer* p_renderer, tr_render_target* p_rende
         */
     }
 
-    TINY_RENDERER_SAFE_FREE(p_render_target);
+    delete p_render_target;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1348,7 +1313,7 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
     assert((src_width > 0) && (src_height > 0) && (src_row_stride > 0));
     assert(tr_sample_count_1 == p_texture->sample_count);
 
-    uint8_t* p_expanded_src_data = NULL;
+    vector<uint8_t> p_expanded_src_data;
     const uint32_t dst_channel_count = tr_util_format_channel_count(p_texture->format);
     assert(src_channel_count <= dst_channel_count);
 
@@ -1356,13 +1321,12 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
     {
         uint32_t expanded_row_stride = src_width * dst_channel_count;
         uint32_t expanded_size = expanded_row_stride * src_height;
-        p_expanded_src_data = (uint8_t*)calloc(1, expanded_size);
-        assert(NULL != p_expanded_src_data);
+        p_expanded_src_data.resize(expanded_size);
 
         const uint32_t src_pixel_stride = src_channel_count;
         const uint32_t expanded_pixel_stride = dst_channel_count;
         const uint8_t* src_row = p_src_data;
-        uint8_t* expanded_row = p_expanded_src_data;
+        uint8_t* expanded_row = p_expanded_src_data.data();
         for (uint32_t y = 0; y < src_height; ++y)
         {
             const uint8_t* src_pixel = src_row;
@@ -1386,13 +1350,12 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
         }
         src_row_stride = expanded_row_stride;
         src_channel_count = dst_channel_count;
-        p_src_data = p_expanded_src_data;
+        p_src_data = p_expanded_src_data.data();
     }
 
     tr_buffer* buffer = NULL;
-    D3D12_PLACED_SUBRESOURCE_FOOTPRINT* subres_layouts = NULL;
-    UINT* subres_rowcounts = NULL;
-    UINT64* subres_row_strides = NULL;
+    vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> subres_layouts;
+
     if (p_queue->renderer->api == tr_api_vulkan)
     {
         // Get memory requirements that covers all mip levels
@@ -1418,14 +1381,16 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
         tex_resource_desc.SampleDesc.Quality = (UINT)p_texture->sample_quality;
         tex_resource_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         tex_resource_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        subres_layouts = (D3D12_PLACED_SUBRESOURCE_FOOTPRINT*)calloc(p_texture->mip_levels,
-                                                                     sizeof(*subres_layouts));
-        subres_rowcounts = (UINT*)calloc(p_texture->mip_levels, sizeof(*subres_rowcounts));
-        subres_row_strides = (UINT64*)calloc(p_texture->mip_levels, sizeof(*subres_row_strides));
+
+        vector<UINT> subres_rowcounts;
+        vector<UINT64> subres_row_strides;
+        subres_layouts.resize(p_texture->mip_levels);
+        subres_rowcounts.resize(p_texture->mip_levels);
+        subres_row_strides.resize(p_texture->mip_levels);
         UINT64 buffer_size = 0;
         p_queue->renderer->dx_device->GetCopyableFootprints(
-            &tex_resource_desc, 0, p_texture->mip_levels, 0, subres_layouts, subres_rowcounts,
-            subres_row_strides, &buffer_size);
+            &tex_resource_desc, 0, p_texture->mip_levels, 0, subres_layouts.data(),
+            subres_rowcounts.data(), subres_row_strides.data(), &buffer_size);
         // Create temporary buffer big enough to fit all mip levels
         tr_create_buffer(p_texture->renderer, tr_buffer_usage_transfer_src, buffer_size, true,
                          &buffer);
@@ -1453,7 +1418,7 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
             //
             //   // Get resource layout for all mip levels
             //   VkSubresourceLayout* subres_layouts =
-            //   (VkSubresourceLayout*)calloc(p_texture->mip_levels, sizeof(*subres_layouts));
+            //   (VkSubresourceLayout*)xalloc(p_texture->mip_levels, sizeof(*subres_layouts));
             //   assert(NULL != subres_layouts); VkImageAspectFlags aspect_mask =
             //   tr_util_vk_determine_aspect_mask(tr_util_to_vk_format(p_texture->format)); for
             //   (uint32_t i = 0; i < p_texture->mip_levels; ++i) {
@@ -1495,20 +1460,14 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
         tr_create_cmd(p_cmd_pool, false, &p_cmd);
 
         tr_begin_cmd(p_cmd);
-        //
-        // D3D12 textures are created with the following resources states
-        // (tr_texture_usage_sampled_image):
-        //     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
-        //     D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-        //
+
         if (p_queue->renderer->api == tr_api_vulkan)
         {
             buffer_offset = 0;
             VkFormat format = tr_util_to_vk_format(p_texture->format);
             VkImageAspectFlags aspect_mask = tr_util_vk_determine_aspect_mask(format);
             const uint32_t region_count = p_texture->mip_levels;
-            VkBufferImageCopy* regions = (VkBufferImageCopy*)calloc(region_count, sizeof(*regions));
-            assert(NULL != regions);
+            vector<VkBufferImageCopy> regions(region_count);
 
             dst_width = p_texture->width;
             dst_height = p_texture->height;
@@ -1537,12 +1496,19 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
             tr_internal_vk_cmd_image_transition(p_cmd, p_texture, tr_texture_usage_undefined,
                                                 tr_texture_usage_transfer_dst);
             vkCmdCopyBufferToImage(p_cmd->vk_cmd_buf, buffer->vk_buffer, p_texture->vk_image,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region_count, regions);
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region_count,
+                                   regions.data());
             tr_internal_vk_cmd_image_transition(p_cmd, p_texture, tr_texture_usage_transfer_dst,
                                                 tr_texture_usage_sampled_image);
         }
         else
         {
+            //
+            // D3D12 textures are created with the following resources states
+            // (tr_texture_usage_sampled_image):
+            //     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+            //     D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+            //
             tr_internal_dx_cmd_image_transition(p_cmd, p_texture, tr_texture_usage_sampled_image,
                                                 tr_texture_usage_transfer_dst);
             for (uint32_t mip_level = 0; mip_level < p_texture->mip_levels; ++mip_level)
@@ -1573,10 +1539,6 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
 
         tr_destroy_buffer(p_texture->renderer, buffer);
     }
-
-    TINY_RENDERER_SAFE_FREE(subres_layouts);
-    TINY_RENDERER_SAFE_FREE(subres_rowcounts);
-    TINY_RENDERER_SAFE_FREE(subres_row_strides);
 }
 
 bool tr_vertex_layout_support_format(tr_format format)
@@ -1970,10 +1932,10 @@ void tr_create_renderer(const char* app_name, const tr_renderer_settings* settin
 {
     if (NULL == s_tr_internal)
     {
-        s_tr_internal = (tr_internal_data*)calloc(1, sizeof(*s_tr_internal));
+        s_tr_internal = new tr_internal_data();
         assert(NULL != s_tr_internal);
 
-        s_tr_internal->renderer = (tr_renderer*)calloc(1, sizeof(*(s_tr_internal->renderer)));
+        s_tr_internal->renderer = new tr_renderer();
         assert(NULL != s_tr_internal->renderer);
 
         // Shorter way to get to the object
@@ -1984,12 +1946,12 @@ void tr_create_renderer(const char* app_name, const tr_renderer_settings* settin
         memcpy(&(p_renderer->settings), settings, sizeof(*settings));
 
         // Allocate storage for queues
-        p_renderer->graphics_queue = (tr_queue*)calloc(1, sizeof(*p_renderer->graphics_queue));
+        p_renderer->graphics_queue = new tr_queue();
         assert(NULL != p_renderer->graphics_queue);
 
         if (settings->api == tr_api_vulkan)
         {
-            p_renderer->present_queue = (tr_queue*)calloc(1, sizeof(*p_renderer->present_queue));
+            p_renderer->present_queue = new tr_queue();
             assert(NULL != p_renderer->present_queue);
         }
         else
@@ -2032,22 +1994,13 @@ void tr_create_renderer(const char* app_name, const tr_renderer_settings* settin
         }
 
         // Allocate storage for image acquired fences
-        p_renderer->image_acquired_fences =
-            (tr_fence**)calloc(p_renderer->settings.swapchain.image_count,
-                               sizeof(*(p_renderer->image_acquired_fences)));
-        assert(NULL != p_renderer->image_acquired_fences);
+        p_renderer->image_acquired_fences.resize(p_renderer->settings.swapchain.image_count);
 
         // Allocate storage for image acquire semaphores
-        p_renderer->image_acquired_semaphores =
-            (tr_semaphore**)calloc(p_renderer->settings.swapchain.image_count,
-                                   sizeof(*(p_renderer->image_acquired_semaphores)));
-        assert(NULL != p_renderer->image_acquired_semaphores);
+        p_renderer->image_acquired_semaphores.resize(p_renderer->settings.swapchain.image_count);
 
         // Allocate storage for render complete semaphores
-        p_renderer->render_complete_semaphores =
-            (tr_semaphore**)calloc(p_renderer->settings.swapchain.image_count,
-                                   sizeof(*(p_renderer->render_complete_semaphores)));
-        assert(NULL != p_renderer->render_complete_semaphores);
+        p_renderer->render_complete_semaphores.resize(p_renderer->settings.swapchain.image_count);
 
         // Initialize fences and semaphores
         for (uint32_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
@@ -2112,14 +2065,11 @@ void tr_internal_create_swapchain_renderpass(tr_renderer* p_renderer)
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
 
-    p_renderer->swapchain_render_targets = (tr_render_target**)calloc(
-        p_renderer->settings.swapchain.image_count, sizeof(*p_renderer->swapchain_render_targets));
-    assert(NULL != p_renderer->swapchain_render_targets);
+    p_renderer->swapchain_render_targets.resize(p_renderer->settings.swapchain.image_count);
 
     for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
     {
-        p_renderer->swapchain_render_targets[i] =
-            (tr_render_target*)calloc(1, sizeof(*(p_renderer->swapchain_render_targets[i])));
+        p_renderer->swapchain_render_targets[i] = new tr_render_target();
         tr_render_target* render_target = p_renderer->swapchain_render_targets[i];
         render_target->renderer = p_renderer;
         render_target->width = p_renderer->settings.width;
@@ -2129,27 +2079,23 @@ void tr_internal_create_swapchain_renderpass(tr_renderer* p_renderer)
         render_target->color_attachment_count = 1;
         render_target->depth_stencil_format = p_renderer->settings.swapchain.depth_stencil_format;
 
-        render_target->color_attachments[0] =
-            (tr_texture*)calloc(1, sizeof(*render_target->color_attachments[0]));
+        render_target->color_attachments[0] = new tr_texture();
         assert(NULL != render_target->color_attachments[0]);
 
         if (p_renderer->settings.swapchain.sample_count > tr_sample_count_1)
         {
-            render_target->color_attachments_multisample[0] =
-                (tr_texture*)calloc(1, sizeof(*render_target->color_attachments_multisample[0]));
+            render_target->color_attachments_multisample[0] = new tr_texture();
             assert(NULL != render_target->color_attachments_multisample[0]);
         }
 
         if (tr_format_undefined != p_renderer->settings.swapchain.depth_stencil_format)
         {
-            render_target->depth_stencil_attachment =
-                (tr_texture*)calloc(1, sizeof(*render_target->depth_stencil_attachment));
+            render_target->depth_stencil_attachment = new tr_texture();
             assert(NULL != render_target->depth_stencil_attachment);
 
             if (p_renderer->settings.swapchain.sample_count > tr_sample_count_1)
             {
-                render_target->depth_stencil_attachment_multisample = (tr_texture*)calloc(
-                    1, sizeof(*render_target->depth_stencil_attachment_multisample));
+                render_target->depth_stencil_attachment_multisample = new tr_texture();
                 assert(NULL != render_target->depth_stencil_attachment_multisample);
             }
         }

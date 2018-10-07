@@ -6,6 +6,8 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 
+using namespace std;
+
 // Functions points for functions that need to be loaded
 PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER fnD3D12CreateRootSignatureDeserializer = NULL;
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE fnD3D12SerializeVersionedRootSignature = NULL;
@@ -76,77 +78,6 @@ D3D12_RESOURCE_STATES tr_util_to_dx_resource_state_texture(tr_texture_usage_flag
         result |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
     }
     return result;
-}
-
-void __tr_internal_dx_create_renderer(const char* app_name, const tr_renderer_settings* settings,
-                                      tr_renderer** pp_renderer)
-{
-    if (NULL == s_tr_internal)
-    {
-        s_tr_internal = (tr_internal_data*)calloc(1, sizeof(*s_tr_internal));
-        assert(NULL != s_tr_internal);
-
-        s_tr_internal->renderer = (tr_renderer*)calloc(1, sizeof(*(s_tr_internal->renderer)));
-        assert(NULL != s_tr_internal->renderer);
-
-        // Shorter way to get to the object
-        tr_renderer* p_renderer = s_tr_internal->renderer;
-
-        // Copy settings
-        memcpy(&(p_renderer->settings), settings, sizeof(*settings));
-
-        // Allocate storage for graphics queue
-        p_renderer->graphics_queue = (tr_queue*)calloc(1, sizeof(*p_renderer->graphics_queue));
-        assert(NULL != p_renderer->graphics_queue);
-        // Writes to swapchain back buffers need to happen on the same queue as the one that
-        // a swapchain uses to present. So just point the present queue at the graphics queue.
-        p_renderer->present_queue = p_renderer->graphics_queue;
-
-        p_renderer->graphics_queue->renderer = p_renderer;
-        p_renderer->present_queue->renderer = p_renderer;
-
-        // Initialize the D3D12 bits
-        {
-            tr_internal_dx_create_device(p_renderer);
-            tr_internal_dx_create_swapchain(p_renderer);
-        }
-
-        // Allocate and configure render target objects
-        tr_internal_create_swapchain_renderpass(p_renderer);
-
-        // Initialize the D3D12 bits of the render targets
-        tr_internal_dx_create_swapchain_renderpass(p_renderer);
-
-        // Allocate storage for image acquired fences
-        p_renderer->image_acquired_fences =
-            (tr_fence**)calloc(p_renderer->settings.swapchain.image_count,
-                               sizeof(*(p_renderer->image_acquired_fences)));
-        assert(NULL != p_renderer->image_acquired_fences);
-
-        // Allocate storage for image acquire semaphores
-        p_renderer->image_acquired_semaphores =
-            (tr_semaphore**)calloc(p_renderer->settings.swapchain.image_count,
-                                   sizeof(*(p_renderer->image_acquired_semaphores)));
-        assert(NULL != p_renderer->image_acquired_semaphores);
-
-        // Allocate storage for render complete semaphores
-        p_renderer->render_complete_semaphores =
-            (tr_semaphore**)calloc(p_renderer->settings.swapchain.image_count,
-                                   sizeof(*(p_renderer->render_complete_semaphores)));
-        assert(NULL != p_renderer->render_complete_semaphores);
-
-        // Initialize fences and semaphores
-        for (uint32_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-        {
-            tr_create_fence(p_renderer, &(p_renderer->image_acquired_fences[i]));
-            tr_create_semaphore(p_renderer, &(p_renderer->image_acquired_semaphores[i]));
-            tr_create_semaphore(p_renderer, &(p_renderer->render_complete_semaphores[i]));
-        }
-
-        // Renderer is good! Assign it to result!
-        p_renderer->api = tr_api_d3d12;
-        *(pp_renderer) = p_renderer;
-    }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -369,149 +300,15 @@ void tr_internal_dx_create_swapchain(tr_renderer* p_renderer)
     swapchain->Release();
 }
 
-void __tr_internal_create_swapchain_renderpass(tr_renderer* p_renderer)
-{
-    TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
-
-    p_renderer->swapchain_render_targets = (tr_render_target**)calloc(
-        p_renderer->settings.swapchain.image_count, sizeof(*p_renderer->swapchain_render_targets));
-    assert(NULL != p_renderer->swapchain_render_targets);
-
-    for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-    {
-        p_renderer->swapchain_render_targets[i] =
-            (tr_render_target*)calloc(1, sizeof(*(p_renderer->swapchain_render_targets[i])));
-        tr_render_target* render_target = p_renderer->swapchain_render_targets[i];
-        render_target->renderer = p_renderer;
-        render_target->width = p_renderer->settings.width;
-        render_target->height = p_renderer->settings.height;
-        render_target->sample_count = (tr_sample_count)p_renderer->settings.swapchain.sample_count;
-        render_target->color_format = p_renderer->settings.swapchain.color_format;
-        render_target->color_attachment_count = 1;
-        render_target->depth_stencil_format = p_renderer->settings.swapchain.depth_stencil_format;
-
-        render_target->color_attachments[0] =
-            (tr_texture*)calloc(1, sizeof(*render_target->color_attachments[0]));
-        assert(NULL != render_target->color_attachments[0]);
-
-        if (p_renderer->settings.swapchain.sample_count > tr_sample_count_1)
-        {
-            render_target->color_attachments_multisample[0] =
-                (tr_texture*)calloc(1, sizeof(*render_target->color_attachments_multisample[0]));
-            assert(NULL != render_target->color_attachments_multisample[0]);
-        }
-
-        if (tr_format_undefined != p_renderer->settings.swapchain.depth_stencil_format)
-        {
-            render_target->depth_stencil_attachment =
-                (tr_texture*)calloc(1, sizeof(*render_target->depth_stencil_attachment));
-            assert(NULL != render_target->depth_stencil_attachment);
-
-            if (p_renderer->settings.swapchain.sample_count > tr_sample_count_1)
-            {
-                render_target->depth_stencil_attachment_multisample = (tr_texture*)calloc(
-                    1, sizeof(*render_target->depth_stencil_attachment_multisample));
-                assert(NULL != render_target->depth_stencil_attachment_multisample);
-            }
-        }
-    }
-
-    for (size_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
-    {
-        tr_render_target* render_target = p_renderer->swapchain_render_targets[i];
-        render_target->color_attachments[0]->type = tr_texture_type_2d;
-        render_target->color_attachments[0]->usage =
-            (tr_texture_usage)(tr_texture_usage_color_attachment | tr_texture_usage_present);
-        render_target->color_attachments[0]->width = p_renderer->settings.width;
-        render_target->color_attachments[0]->height = p_renderer->settings.height;
-        render_target->color_attachments[0]->depth = 1;
-        render_target->color_attachments[0]->format = p_renderer->settings.swapchain.color_format;
-        render_target->color_attachments[0]->mip_levels = 1;
-        render_target->color_attachments[0]->clear_value.r =
-            p_renderer->settings.swapchain.color_clear_value.r;
-        render_target->color_attachments[0]->clear_value.g =
-            p_renderer->settings.swapchain.color_clear_value.g;
-        render_target->color_attachments[0]->clear_value.b =
-            p_renderer->settings.swapchain.color_clear_value.b;
-        render_target->color_attachments[0]->clear_value.a =
-            p_renderer->settings.swapchain.color_clear_value.a;
-        render_target->color_attachments[0]->sample_count = tr_sample_count_1;
-
-        if (p_renderer->settings.swapchain.sample_count > tr_sample_count_1)
-        {
-            render_target->color_attachments_multisample[0]->type = tr_texture_type_2d;
-            render_target->color_attachments_multisample[0]->usage =
-                tr_texture_usage_color_attachment;
-            render_target->color_attachments_multisample[0]->width = p_renderer->settings.width;
-            render_target->color_attachments_multisample[0]->height = p_renderer->settings.height;
-            render_target->color_attachments_multisample[0]->depth = 1;
-            render_target->color_attachments_multisample[0]->format =
-                p_renderer->settings.swapchain.color_format;
-            render_target->color_attachments_multisample[0]->mip_levels = 1;
-            render_target->color_attachments_multisample[0]->clear_value.r =
-                p_renderer->settings.swapchain.color_clear_value.r;
-            render_target->color_attachments_multisample[0]->clear_value.g =
-                p_renderer->settings.swapchain.color_clear_value.g;
-            render_target->color_attachments_multisample[0]->clear_value.b =
-                p_renderer->settings.swapchain.color_clear_value.b;
-            render_target->color_attachments_multisample[0]->clear_value.a =
-                p_renderer->settings.swapchain.color_clear_value.a;
-            render_target->color_attachments_multisample[0]->sample_count =
-                render_target->sample_count;
-        }
-
-        if (tr_format_undefined != p_renderer->settings.swapchain.depth_stencil_format)
-        {
-            render_target->depth_stencil_attachment->type = tr_texture_type_2d;
-            render_target->depth_stencil_attachment->usage =
-                tr_texture_usage_depth_stencil_attachment;
-            render_target->depth_stencil_attachment->width = p_renderer->settings.width;
-            render_target->depth_stencil_attachment->height = p_renderer->settings.height;
-            render_target->depth_stencil_attachment->depth = 1;
-            render_target->depth_stencil_attachment->format =
-                p_renderer->settings.swapchain.depth_stencil_format;
-            render_target->depth_stencil_attachment->mip_levels = 1;
-            render_target->depth_stencil_attachment->clear_value.depth =
-                p_renderer->settings.swapchain.depth_stencil_clear_value.depth;
-            render_target->depth_stencil_attachment->clear_value.stencil =
-                p_renderer->settings.swapchain.depth_stencil_clear_value.stencil;
-            render_target->depth_stencil_attachment->sample_count = tr_sample_count_1;
-
-            if (p_renderer->settings.swapchain.sample_count > tr_sample_count_1)
-            {
-                render_target->depth_stencil_attachment_multisample->type = tr_texture_type_2d;
-                render_target->depth_stencil_attachment_multisample->usage =
-                    tr_texture_usage_depth_stencil_attachment;
-                render_target->depth_stencil_attachment_multisample->width =
-                    p_renderer->settings.width;
-                render_target->depth_stencil_attachment_multisample->height =
-                    p_renderer->settings.height;
-                render_target->depth_stencil_attachment_multisample->depth = 1;
-                render_target->depth_stencil_attachment_multisample->format =
-                    p_renderer->settings.swapchain.depth_stencil_format;
-                render_target->depth_stencil_attachment_multisample->mip_levels = 1;
-                render_target->depth_stencil_attachment_multisample->clear_value.depth =
-                    p_renderer->settings.swapchain.depth_stencil_clear_value.depth;
-                render_target->depth_stencil_attachment_multisample->clear_value.stencil =
-                    p_renderer->settings.swapchain.depth_stencil_clear_value.stencil;
-                render_target->depth_stencil_attachment_multisample->sample_count =
-                    render_target->sample_count;
-            }
-        }
-    }
-}
-
 void tr_internal_dx_create_swapchain_renderpass(tr_renderer* p_renderer)
 {
     assert(NULL != p_renderer->dx_device);
     assert(NULL != p_renderer->dx_swapchain);
 
-    ID3D12Resource** swapchain_images = (ID3D12Resource**)calloc(
-        p_renderer->settings.swapchain.image_count, sizeof(*swapchain_images));
-    assert(NULL != swapchain_images);
+    vector<ID3D12Resource*> swapchain_images(p_renderer->settings.swapchain.image_count);
     for (uint32_t i = 0; i < p_renderer->settings.swapchain.image_count; ++i)
     {
-        HRESULT hres = p_renderer->dx_swapchain->GetBuffer(i, __uuidof(*swapchain_images),
+        HRESULT hres = p_renderer->dx_swapchain->GetBuffer(i, __uuidof(*swapchain_images.data()),
                                                            (void**)&(swapchain_images[i]));
         assert(SUCCEEDED(hres));
     }
@@ -547,8 +344,6 @@ void tr_internal_dx_create_swapchain_renderpass(tr_renderer* p_renderer)
         tr_render_target* render_target = p_renderer->swapchain_render_targets[i];
         tr_internal_dx_create_render_target(p_renderer, false, render_target);
     }
-
-    TINY_RENDERER_SAFE_FREE(swapchain_images);
 }
 
 void tr_internal_dx_destroy_device(tr_renderer* p_renderer)
@@ -1237,11 +1032,10 @@ void tr_internal_dx_create_shader_program(
                             compile_flags, 0, 0, NULL, 0, compiled_code, &error_msgs);
             if (FAILED(hres))
             {
-                char* msg = (char*)calloc(error_msgs->GetBufferSize() + 1, sizeof(*msg));
-                assert(NULL != msg);
-                memcpy(msg, error_msgs->GetBufferPointer(), error_msgs->GetBufferSize());
-                tr_internal_log(tr_log_type_error, msg, "tr_internal_dx_create_shader_program");
-                TINY_RENDERER_SAFE_FREE(msg);
+                vector<char> msg(error_msgs->GetBufferSize() + 1);
+                memcpy(msg.data(), error_msgs->GetBufferPointer(), error_msgs->GetBufferSize());
+                tr_internal_log(tr_log_type_error, msg.data(),
+                                "tr_internal_dx_create_shader_program");
             }
             assert(SUCCEEDED(hres));
         }
@@ -1273,12 +1067,12 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
     }
 
     uint32_t range_count = 0;
-    D3D12_DESCRIPTOR_RANGE1* ranges_11 = NULL;
-    D3D12_DESCRIPTOR_RANGE* ranges_10 = NULL;
+    vector<D3D12_DESCRIPTOR_RANGE1> ranges_11;
+    vector<D3D12_DESCRIPTOR_RANGE> ranges_10;
 
     uint32_t parameter_count = 0;
-    D3D12_ROOT_PARAMETER1* parameters_11 = NULL;
-    D3D12_ROOT_PARAMETER* parameters_10 = NULL;
+    vector<D3D12_ROOT_PARAMETER1> parameters_11;
+    vector<D3D12_ROOT_PARAMETER> parameters_10;
 
     if (NULL != p_descriptor_set)
     {
@@ -1319,13 +1113,11 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
         }
 
         // Allocate everything with an upper bound of descriptor counts
-        ranges_11 = (D3D12_DESCRIPTOR_RANGE1*)calloc(descriptor_count, sizeof(*ranges_11));
-        ranges_10 = (D3D12_DESCRIPTOR_RANGE*)calloc(descriptor_count, sizeof(*ranges_10));
+        ranges_11.resize(descriptor_count);
+        ranges_10.resize(descriptor_count);
 
-        parameters_11 = (D3D12_ROOT_PARAMETER1*)calloc(descriptor_count, sizeof(*parameters_11));
-        assert(NULL != parameters_11);
-        parameters_10 = (D3D12_ROOT_PARAMETER*)calloc(descriptor_count, sizeof(*parameters_11));
-        assert(NULL != parameters_10);
+        parameters_11.resize(descriptor_count);
+        parameters_10.resize(descriptor_count);
 
         // Build ranges
         for (uint32_t descriptor_index = 0; descriptor_index < descriptor_count; ++descriptor_index)
@@ -1454,7 +1246,7 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
     {
         desc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
         desc.Desc_1_1.NumParameters = parameter_count;
-        desc.Desc_1_1.pParameters = parameters_11;
+        desc.Desc_1_1.pParameters = parameters_11.data();
         desc.Desc_1_1.NumStaticSamplers = 0;
         desc.Desc_1_1.pStaticSamplers = NULL;
         desc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -1463,7 +1255,7 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
     {
         desc.Version = D3D_ROOT_SIGNATURE_VERSION_1_0;
         desc.Desc_1_0.NumParameters = parameter_count;
-        desc.Desc_1_0.pParameters = parameters_10;
+        desc.Desc_1_0.pParameters = parameters_10.data();
         desc.Desc_1_0.NumStaticSamplers = 0;
         desc.Desc_1_0.pStaticSamplers = NULL;
         desc.Desc_1_0.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -1489,11 +1281,6 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
 
     TINY_RENDERER_SAFE_RELEASE(sig_blob);
     TINY_RENDERER_SAFE_RELEASE(error_msgs);
-
-    TINY_RENDERER_SAFE_FREE(ranges_11);
-    TINY_RENDERER_SAFE_FREE(ranges_10);
-    TINY_RENDERER_SAFE_FREE(parameters_11);
-    TINY_RENDERER_SAFE_FREE(parameters_10);
 }
 
 void tr_internal_dx_create_pipeline_state(tr_renderer* p_renderer,

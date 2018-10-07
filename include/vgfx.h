@@ -59,6 +59,8 @@ NOTES:
 
 #include <stdint.h>
 #include <assert.h>
+#include <vector>
+#include <string>
 
 #if defined(__linux__)
 #define TINY_RENDERER_LINUX
@@ -447,13 +449,13 @@ struct tr_renderer
 {
     tr_api api;
     tr_renderer_settings settings;
-    tr_render_target** swapchain_render_targets;
+    std::vector<tr_render_target*> swapchain_render_targets;
     uint32_t swapchain_image_index;
     tr_queue* graphics_queue;
     tr_queue* present_queue;
-    tr_fence** image_acquired_fences;
-    tr_semaphore** image_acquired_semaphores;
-    tr_semaphore** render_complete_semaphores;
+    std::vector<tr_fence*> image_acquired_fences;
+    std::vector<tr_semaphore*> image_acquired_semaphores;
+    std::vector<tr_semaphore*> render_complete_semaphores;
 
     VkInstance vk_instance;
     uint32_t vk_gpu_count;
@@ -602,12 +604,12 @@ struct tr_shader_program
     VkShaderModule vk_geom;
     VkShaderModule vk_frag;
     VkShaderModule vk_comp;
-    const char* vert_entry_point;
-    const char* tesc_entry_point;
-    const char* tese_entry_point;
-    const char* geom_entry_point;
-    const char* frag_entry_point;
-    const char* comp_entry_point;
+    std::string vert_entry_point;
+    std::string tesc_entry_point;
+    std::string tese_entry_point;
+    std::string geom_entry_point;
+    std::string frag_entry_point;
+    std::string comp_entry_point;
 
     ID3DBlob* dx_vert;
     ID3DBlob* dx_hull;

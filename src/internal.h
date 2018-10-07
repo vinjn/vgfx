@@ -8,13 +8,6 @@
     assert(NULL != p_renderer);                                                                    \
     assert(s_tr_internal->renderer == p_renderer);
 
-#define TINY_RENDERER_SAFE_FREE(p_var)                                                             \
-    if (NULL != p_var)                                                                             \
-    {                                                                                              \
-        free((void*)p_var);                                                                        \
-        p_var = NULL;                                                                              \
-    }
-
 #define TINY_RENDERER_SAFE_RELEASE(p_var)                                                          \
     if (NULL != p_var)                                                                             \
     {                                                                                              \
