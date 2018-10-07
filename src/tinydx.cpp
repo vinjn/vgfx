@@ -1,6 +1,8 @@
-#include "tinydx.h"
+#include "vgfx.h"
 #include "ptr_vector.h"
 
+#include <stdio.h>
+#include <assert.h>
 #include <d3dcompiler.h>
 
 #pragma comment(lib, "d3d12.lib")
@@ -122,14 +124,6 @@ void tr_internal_dx_queue_wait_idle(tr_queue* p_queue);
 PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER           fnD3D12CreateRootSignatureDeserializer = NULL;
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE           fnD3D12SerializeVersionedRootSignature = NULL;
 PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER fnD3D12CreateVersionedRootSignatureDeserializer = NULL;
-
-// Internal singleton 
-typedef struct tr_internal_data {
-    tr_renderer*        renderer;
-    tr_render_target*   bound_render_target;
-} tr_internal_data;
-
-static tr_internal_data* s_tr_internal = NULL;
 
 // Proxy log callback
 static void tr_internal_log(tr_log_type type, const char* msg, const char* component)

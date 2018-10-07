@@ -1,3 +1,5 @@
 bin/Debug
 build
 lib/Debug
+vs20*
+bin

@@ -1,11 +1,12 @@
 #pragma once
 
-typedef void(*pfn_ptr_vector_destroy_elem)(void*);
+typedef void (*pfn_ptr_vector_destroy_elem)(void*);
 
-typedef struct ptr_vector {
-    size_t                      _size;
-    size_t                      _capacity;
-    void**                      _data;
+typedef struct ptr_vector
+{
+    size_t _size;
+    size_t _capacity;
+    void** _data;
     pfn_ptr_vector_destroy_elem _destroy_elem_fn;
 } ptr_vector;
 

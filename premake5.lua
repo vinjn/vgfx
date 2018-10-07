@@ -79,9 +79,12 @@ solution "vgfx"
         kind "StaticLib"
 
         files {
-            "ptr_vector.*",
-            "tinyvk.*",
-            "tinydx.*",
+            "include/**",
+            "src/**",
+        }
+
+        includedirs {
+            "include",
         }
 
         libdirs {
@@ -102,7 +105,7 @@ solution "vgfx"
             }
 
             includedirs {
-                ".",
+                "include",
                 path.join("$(VULKAN_SDK)", "include"),
                 "third_party/glfw/include",
                 "third_party/stb",
