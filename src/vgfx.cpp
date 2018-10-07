@@ -1189,8 +1189,8 @@ void tr_util_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, 
     {
         tr_internal_dx_cmd_buffer_transition(p_cmd, p_buffer, tr_buffer_usage_storage_uav,
                                              tr_buffer_usage_transfer_dst);
-        p_cmd->dx_cmd_list->CopyBufferRegion(p_buffer->dx_resource, count_offset,
-                                             buffer->dx_resource, 0, 4);
+        p_cmd->dx_cmd_list->CopyBufferRegion(p_buffer->dx_resource.Get(), count_offset,
+                                             buffer->dx_resource.Get(), 0, 4);
         tr_internal_dx_cmd_buffer_transition(p_cmd, p_buffer, tr_buffer_usage_transfer_dst,
                                              tr_buffer_usage_storage_uav);
     }
@@ -1236,8 +1236,8 @@ void tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer)
     {
         tr_internal_dx_cmd_buffer_transition(p_cmd, p_buffer, p_buffer->usage,
                                              tr_buffer_usage_transfer_dst);
-        p_cmd->dx_cmd_list->CopyBufferRegion(p_buffer->dx_resource, 0, buffer->dx_resource, 0,
-                                             p_buffer->size);
+        p_cmd->dx_cmd_list->CopyBufferRegion(p_buffer->dx_resource.Get(), 0,
+                                             buffer->dx_resource.Get(), 0, p_buffer->size);
         tr_internal_dx_cmd_buffer_transition(p_cmd, p_buffer, tr_buffer_usage_transfer_dst,
                                              p_buffer->usage);
     }
@@ -1285,8 +1285,8 @@ void tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_d
     {
         tr_internal_dx_cmd_buffer_transition(p_cmd, p_buffer, p_buffer->usage,
                                              tr_buffer_usage_transfer_dst);
-        p_cmd->dx_cmd_list->CopyBufferRegion(p_buffer->dx_resource, 0, buffer->dx_resource, 0,
-                                             size);
+        p_cmd->dx_cmd_list->CopyBufferRegion(p_buffer->dx_resource.Get(), 0,
+                                             buffer->dx_resource.Get(), 0, size);
         tr_internal_dx_cmd_buffer_transition(p_cmd, p_buffer, tr_buffer_usage_transfer_dst,
                                              p_buffer->usage);
     }
@@ -1515,11 +1515,11 @@ void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_
             {
                 const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& layout = subres_layouts[mip_level];
                 D3D12_TEXTURE_COPY_LOCATION src = {};
-                src.pResource = buffer->dx_resource;
+                src.pResource = buffer->dx_resource.Get();
                 src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
                 src.PlacedFootprint = layout;
                 D3D12_TEXTURE_COPY_LOCATION dst = {};
-                dst.pResource = p_texture->dx_resource;
+                dst.pResource = p_texture->dx_resource.Get();
                 dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
                 dst.SubresourceIndex = mip_level;
 

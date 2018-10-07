@@ -82,6 +82,10 @@ NOTES:
 
 #include <d3d12.h>
 #include <dxgi1_5.h>
+#include <wrl/client.h>
+
+using Microsoft::WRL::ComPtr;
+
 #endif
 
 #include <vulkan/vulkan.h>
@@ -423,7 +427,7 @@ struct tr_renderer_settings
 struct tr_fence
 {
     VkFence vk_fence;
-    ID3D12Fence* dx_fence;
+    ComPtr<ID3D12Fence> dx_fence;
 };
 
 struct tr_semaphore
@@ -438,10 +442,10 @@ struct tr_queue
 
     VkQueue vk_queue;
     uint32_t vk_queue_family_index;
-    ID3D12CommandQueue* dx_queue;
+    ComPtr<ID3D12CommandQueue> dx_queue;
 
     HANDLE dx_wait_idle_fence_event;
-    ID3D12Fence* dx_wait_idle_fence;
+    ComPtr<ID3D12Fence> dx_wait_idle_fence;
     UINT64 dx_wait_idle_fence_value;
 };
 
@@ -471,19 +475,19 @@ struct tr_renderer
     bool vk_device_ext_VK_AMD_negative_viewport_height;
 
 #if defined(_DEBUG)
-    ID3D12Debug* dx_debug_ctrl;
+    ComPtr<ID3D12Debug> dx_debug_ctrl;
 #endif
     // Use IDXGIFactory4 for now since IDXGIFactory5
     // creates problems for the Visual Studio graphics
     // debugger.
-    IDXGIFactory4* dx_factory;
+    ComPtr<IDXGIFactory4> dx_factory;
     uint32_t dx_gpu_count;
-    IDXGIAdapter3* dx_gpus[tr_max_gpus];
-    IDXGIAdapter3* dx_active_gpu;
-    ID3D12Device* dx_device;
+    ComPtr<IDXGIAdapter3> dx_gpus[tr_max_gpus];
+    ComPtr<IDXGIAdapter3> dx_active_gpu;
+    ComPtr<ID3D12Device> dx_device;
     // Use IDXGISwapChain3 for now since IDXGISwapChain4
     // isn't supported by older devices.
-    IDXGISwapChain3* dx_swapchain;
+    ComPtr<IDXGISwapChain3> dx_swapchain;
 };
 
 struct tr_descriptor
@@ -509,22 +513,22 @@ struct tr_descriptor_set
     VkDescriptorSet vk_descriptor_set;
     VkDescriptorPool vk_descriptor_pool;
 
-    ID3D12DescriptorHeap* dx_cbvsrvuav_heap;
-    ID3D12DescriptorHeap* dx_sampler_heap;
+    ComPtr<ID3D12DescriptorHeap> dx_cbvsrvuav_heap;
+    ComPtr<ID3D12DescriptorHeap> dx_sampler_heap;
 };
 
 struct tr_cmd_pool
 {
     tr_renderer* renderer;
     VkCommandPool vk_cmd_pool;
-    ID3D12CommandAllocator* dx_cmd_alloc;
+    ComPtr<ID3D12CommandAllocator> dx_cmd_alloc;
 };
 
 struct tr_cmd
 {
     tr_cmd_pool* cmd_pool;
     VkCommandBuffer vk_cmd_buf;
-    ID3D12GraphicsCommandList* dx_cmd_list;
+    ComPtr<ID3D12GraphicsCommandList> dx_cmd_list;
 };
 
 struct tr_buffer
@@ -548,7 +552,7 @@ struct tr_buffer
     // Used for uniform texel and storage texel buffers
     VkBufferView vk_buffer_view;
 
-    ID3D12Resource* dx_resource;
+    ComPtr<ID3D12Resource> dx_resource;
     D3D12_CONSTANT_BUFFER_VIEW_DESC dx_cbv_view_desc;
     D3D12_SHADER_RESOURCE_VIEW_DESC dx_srv_view_desc;
     D3D12_UNORDERED_ACCESS_VIEW_DESC dx_uav_view_desc;
@@ -580,7 +584,7 @@ struct tr_texture
     VkImageAspectFlags vk_aspect_mask;
     VkDescriptorImageInfo vk_texture_view;
 
-    ID3D12Resource* dx_resource;
+    ComPtr<ID3D12Resource> dx_resource;
     D3D12_SHADER_RESOURCE_VIEW_DESC dx_srv_view_desc;
     D3D12_UNORDERED_ACCESS_VIEW_DESC dx_uav_view_desc;
 };
@@ -611,12 +615,12 @@ struct tr_shader_program
     std::string frag_entry_point;
     std::string comp_entry_point;
 
-    ID3DBlob* dx_vert;
-    ID3DBlob* dx_hull;
-    ID3DBlob* dx_domn;
-    ID3DBlob* dx_geom;
-    ID3DBlob* dx_frag;
-    ID3DBlob* dx_comp;
+    ComPtr<ID3DBlob> dx_vert;
+    ComPtr<ID3DBlob> dx_hull;
+    ComPtr<ID3DBlob> dx_domn;
+    ComPtr<ID3DBlob> dx_geom;
+    ComPtr<ID3DBlob> dx_frag;
+    ComPtr<ID3DBlob> dx_comp;
 };
 
 struct tr_vertex_attrib
@@ -653,8 +657,8 @@ struct tr_pipeline
     VkPipelineLayout vk_pipeline_layout;
     VkPipeline vk_pipeline;
 
-    ID3D12RootSignature* dx_root_signature;
-    ID3D12PipelineState* dx_pipeline_state;
+    ComPtr<ID3D12RootSignature> dx_root_signature;
+    ComPtr<ID3D12PipelineState> dx_pipeline_state;
 };
 
 struct tr_render_target
@@ -673,8 +677,8 @@ struct tr_render_target
     VkRenderPass vk_render_pass;
     VkFramebuffer vk_framebuffer;
 
-    ID3D12DescriptorHeap* dx_rtv_heap;
-    ID3D12DescriptorHeap* dx_dsv_heap;
+    ComPtr<ID3D12DescriptorHeap> dx_rtv_heap;
+    ComPtr<ID3D12DescriptorHeap> dx_dsv_heap;
 };
 
 struct tr_mesh

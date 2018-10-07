@@ -8,13 +8,6 @@
     assert(NULL != p_renderer);                                                                    \
     assert(s_tr_internal->renderer == p_renderer);
 
-#define TINY_RENDERER_SAFE_RELEASE(p_var)                                                          \
-    if (NULL != p_var)                                                                             \
-    {                                                                                              \
-        p_var->Release();                                                                          \
-        p_var = NULL;                                                                              \
-    }
-
 static inline uint32_t tr_max(uint32_t a, uint32_t b) { return a > b ? a : b; }
 
 static inline uint32_t tr_min(uint32_t a, uint32_t b) { return a < b ? a : b; }
