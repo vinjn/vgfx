@@ -95,8 +95,15 @@ solution "vgfx"
             -- "../Falcor/Framework/Source/Raytracing/**",
         }
 
-    function create_example_project( example_path )
-        leaf_name = string.sub(example_path, string.len("samples/src/") + 1, -5);
+    function create_example_project( example_path, is_vulkan )
+        leaf_name = string.sub(example_path, string.len("samples/src/") + 1, -5)
+        if is_vulkan then
+            leaf_name = leaf_name .. "_vk"
+            renderer_def = "TINY_RENDERER_VK"
+        else
+            leaf_name = leaf_name .. "_d3d12"
+            renderer_def = "TINY_RENDERER_DX"
+        end
 
         project (leaf_name)
             kind "ConsoleApp"
@@ -118,7 +125,7 @@ solution "vgfx"
             }
 
             defines {
-                "TINY_RENDERER_VK",
+                renderer_def,
                 "GLM_FORCE_RADIANS",
                 "GLM_FORCE_DEPTH_ZERO_TO_ONE",
                 "GLM_ENABLE_EXPERIMENTAL",
@@ -142,5 +149,6 @@ solution "vgfx"
 
     local examples = os.matchfiles("samples/src/*")
     for _, example in ipairs(examples) do
-        create_example_project(example)
+        create_example_project(example, true)
+        create_example_project(example, false)
     end

@@ -58,6 +58,7 @@ NOTES:
 #pragma once
 
 #include <stdint.h>
+#include <assert.h>
 
 #if defined(__linux__)
 #define TINY_RENDERER_LINUX
@@ -402,6 +403,7 @@ struct tr_string_list
 struct tr_renderer_settings
 {
     tr_platform_handle handle;
+    tr_api api;
     uint32_t width;
     uint32_t height;
     tr_swapchain_settings swapchain;
@@ -871,12 +873,3 @@ void tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_
                                   uint32_t src_row_stride, const float* p_src_data,
                                   uint32_t channels, tr_texture* p_texture,
                                   tr_image_resize_float_fn resize_fn, void* p_user_data);
-
-// Internal singleton
-struct tr_internal_data
-{
-    tr_renderer* renderer;
-    tr_render_target* bound_render_target;
-};
-
-extern tr_internal_data* s_tr_internal;

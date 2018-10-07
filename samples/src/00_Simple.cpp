@@ -150,6 +150,10 @@ void init_tiny_renderer(GLFWwindow* window)
     s_window_height = (uint32_t)height;
 
     tr_renderer_settings settings = {0};
+#if defined(TINY_RENDERER_DX)
+    settings.api = tr_api_d3d12;
+#endif
+
 #if defined(__linux__)
     settings.handle.connection = XGetXCBConnection(glfwGetX11Display());
     settings.handle.window = glfwGetX11Window(window);
@@ -178,13 +182,12 @@ void init_tiny_renderer(GLFWwindow* window)
     // Uses HLSL source
     auto vert = load_file(k_asset_dir + "simple.vs.spv");
     auto frag = load_file(k_asset_dir + "simple.ps.spv");
-    tr_create_shader_program(m_renderer, (uint32_t)vert.size(), (uint32_t*)(vert.data()), "VSMain",
-                             (uint32_t)frag.size(), (uint32_t*)(frag.data()), "PSMain", &m_shader);
 #elif defined(TINY_RENDERER_DX)
-    auto hlsl = load_file(k_asset_dir + "simple.hlsl");
-    tr_create_shader_program(m_renderer, (uint32_t)hlsl.size(), hlsl.data(), "VSMain",
-                             (uint32_t)hlsl.size(), hlsl.data(), "PSMain", &m_shader);
+    auto vert = load_file(k_asset_dir + "simple.hlsl");
+    auto frag = vert;
 #endif
+    tr_create_shader_program(m_renderer, (uint32_t)vert.size(), (uint32_t*)(vert.data()), "VSMain",
+        (uint32_t)frag.size(), (uint32_t*)(frag.data()), "PSMain", &m_shader);
 
     tr_vertex_layout vertex_layout = {};
     vertex_layout.attrib_count = 1;

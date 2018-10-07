@@ -12,11 +12,7 @@
 #include <sstream>
 #include <vector>
 
-#if defined(TINY_RENDERER_DX)
-    #include "tinydx.h"
-#elif defined(TINY_RENDERER_VK)
-    #include "tinyvk.h"
-#endif
+#include "vgfx.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -148,6 +144,10 @@ void init_tiny_renderer(GLFWwindow* window)
     s_window_height = (uint32_t)height;
 
     tr_renderer_settings settings = {0};
+#if defined(TINY_RENDERER_DX)
+    settings.api = tr_api_d3d12;
+#endif
+
 #if defined(__linux__)
     settings.handle.connection              = XGetXCBConnection(glfwGetX11Display());
     settings.handle.window                  = glfwGetX11Window(window);
