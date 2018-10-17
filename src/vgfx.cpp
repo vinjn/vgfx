@@ -1,6 +1,8 @@
 #include "dx_internal.h"
 #include "internal.h"
 #include "vk_internal.h"
+#include <fstream>
+#include <assert.h>
 
 using namespace std;
 
@@ -2192,4 +2194,65 @@ void tr_internal_create_swapchain_renderpass(tr_renderer* p_renderer)
             }
         }
     }
+}
+
+std::vector<uint8_t> load_file(const std::string& path)
+{
+    std::ifstream is;
+    is.open(path.c_str(), std::ios::in | std::ios::binary);
+    assert(is.is_open());
+
+    is.seekg(0, std::ios::end);
+    std::vector<uint8_t> buffer(is.tellg());
+    assert(0 != buffer.size());
+
+    is.seekg(0, std::ios::beg);
+    is.read((char*)buffer.data(), buffer.size());
+
+    return buffer;
+}
+
+void app_glfw_error(int error, const char* description)
+{
+    printf("Error %d : %s\n", error, description);
+}
+
+void renderer_log(tr_log_type type, const char* msg, const char* component)
+{
+    switch (type) {
+    case tr_log_type_info: {printf("[INFO] [%s] : %s\n", component, msg); } break;
+    case tr_log_type_warn: {printf("[WARN] [%s] : %s\n", component, msg); } break;
+    case tr_log_type_debug: {printf("[DEBUG] [%s] : %s\n", component, msg); } break;
+    case tr_log_type_error: {printf("[ERORR] [%s] : %s\n", component, msg); } break;
+    default: break;
+    }
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug(
+    VkDebugReportFlagsEXT      flags,
+    VkDebugReportObjectTypeEXT objectType,
+    uint64_t                   object,
+    size_t                     location,
+    int32_t                    messageCode,
+    const char*                pLayerPrefix,
+    const char*                pMessage,
+    void*                      pUserData
+)
+{
+    if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+        //printf("[INFO] [%s] : %s (%d)", pLayerPrefix, pMessage, messageCode);
+    }
+    else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+        printf("[WARN] [%s] : %s (%d)", pLayerPrefix, pMessage, messageCode);
+    }
+    else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+        //printf("[PERF] [%s] : %s (%d)", pLayerPrefix, pMessage, messageCode);
+    }
+    else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+        printf("[ERROR] [%s] : %s (%d)", pLayerPrefix, pMessage, messageCode);
+    }
+    else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+        printf("[DEBUG] [%s] : %s (%d)", pLayerPrefix, pMessage, messageCode);
+    }
+    return VK_FALSE;
 }

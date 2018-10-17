@@ -898,3 +898,15 @@ void tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_
                                   uint32_t src_row_stride, const float* p_src_data,
                                   uint32_t channels, tr_texture* p_texture,
                                   tr_image_resize_float_fn resize_fn, void* p_user_data);
+
+std::vector<uint8_t> load_file(const std::string& path);
+
+void app_glfw_error(int error, const char* description);
+
+void renderer_log(tr_log_type type, const char* msg, const char* component);
+
+VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug(VkDebugReportFlagsEXT flags,
+    VkDebugReportObjectTypeEXT objectType, uint64_t object,
+    size_t location, int32_t messageCode,
+    const char* pLayerPrefix, const char* pMessage,
+    void* pUserData);
