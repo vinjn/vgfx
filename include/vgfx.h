@@ -483,7 +483,6 @@ struct tr_renderer
     VkDebugReportCallbackEXT vk_debug_report;
     bool vk_device_ext_VK_AMD_negative_viewport_height;
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12Debug> dx_debug_ctrl;
     // Use IDXGIFactory4 for now since IDXGIFactory5
     // creates problems for the Visual Studio graphics
     // debugger.
@@ -906,7 +905,7 @@ void app_glfw_error(int error, const char* description);
 void renderer_log(tr_log_type type, const char* msg, const char* component);
 
 VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug(VkDebugReportFlagsEXT flags,
-    VkDebugReportObjectTypeEXT objectType, uint64_t object,
-    size_t location, int32_t messageCode,
-    const char* pLayerPrefix, const char* pMessage,
-    void* pUserData);
+                                            VkDebugReportObjectTypeEXT objectType, uint64_t object,
+                                            size_t location, int32_t messageCode,
+                                            const char* pLayerPrefix, const char* pMessage,
+                                            void* pUserData);

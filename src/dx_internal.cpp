@@ -87,10 +87,11 @@ D3D12_RESOURCE_STATES tr_util_to_dx_resource_state_texture(tr_texture_usage_flag
 void tr_internal_dx_create_device(tr_renderer* p_renderer)
 {
 #if defined(_DEBUG)
-    if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(p_renderer->dx_debug_ctrl),
-                                         (void**)&(p_renderer->dx_debug_ctrl))))
+    ComPtr<ID3D12Debug> dx_debug_ctrl;
+    if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(dx_debug_ctrl),
+                                         (void**)&(dx_debug_ctrl))))
     {
-        p_renderer->dx_debug_ctrl->EnableDebugLayer();
+        dx_debug_ctrl->EnableDebugLayer();
     }
 #endif
 
@@ -119,6 +120,23 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
         {
             continue;
         }
+
+        static const UUID D3D12RaytracingPrototype = { /* 5d15d3b2-015a-4f39-8d47-299ac37190d3 */
+            0x5d15d3b2,
+            0x015a,
+            0x4f39,
+            { 0x8d, 0x47, 0x29, 0x9a, 0xc3, 0x71, 0x90, 0xd3 }
+        };
+        HRESULT hr = D3D12EnableExperimentalFeatures(1, &D3D12RaytracingPrototype, NULL, NULL);
+        if (FAILED(hr))
+        {
+            printf("Could not enable raytracing (D3D12EnableExperimentalFeatures() failed).\n" \
+                "Possible reasons:\n" \
+                "  1) your OS is not in developer mode\n" \
+                "  2) your GPU driver doesn't match the D3D12 runtime loaded by the app (d3d12.dll and friends)\n" \
+                "  3) your D3D12 runtime doesn't match the D3D12 headers used by your app (in particular, the GUID passed to D3D12EnableExperimentalFeatures)\n\n");
+        }
+
         // Make sure the adapter can support a D3D12 device
         if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1,
                                         __uuidof(p_renderer->dx_device), NULL)))
