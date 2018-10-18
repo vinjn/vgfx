@@ -80,11 +80,40 @@ NOTES:
 #endif
 #include <Windows.h>
 
+#include <comdef.h>
 #include <d3d12.h>
+#include <d3d12_1.h>
+#include <d3dcompiler.h>
 #include <dxgi1_5.h>
-#include <wrl/client.h>
 
-using Microsoft::WRL::ComPtr;
+#define MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
+
+// DXGI
+MAKE_SMART_COM_PTR(IDXGISwapChain1);
+MAKE_SMART_COM_PTR(IDXGISwapChain3);
+MAKE_SMART_COM_PTR(IDXGIDevice);
+MAKE_SMART_COM_PTR(IDXGIAdapter1);
+MAKE_SMART_COM_PTR(IDXGIAdapter3);
+MAKE_SMART_COM_PTR(IDXGIFactory4);
+MAKE_SMART_COM_PTR(ID3DBlob);
+
+// Device
+MAKE_SMART_COM_PTR(ID3D12Device);
+MAKE_SMART_COM_PTR(ID3D12Debug);
+MAKE_SMART_COM_PTR(ID3D12CommandQueue);
+MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
+MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
+MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
+MAKE_SMART_COM_PTR(ID3D12Resource);
+MAKE_SMART_COM_PTR(ID3D12Fence);
+MAKE_SMART_COM_PTR(ID3D12PipelineState);
+MAKE_SMART_COM_PTR(ID3D12ShaderReflection);
+MAKE_SMART_COM_PTR(ID3D12RootSignature);
+MAKE_SMART_COM_PTR(ID3D12QueryHeap);
+MAKE_SMART_COM_PTR(ID3D12CommandSignature);
+MAKE_SMART_COM_PTR(ID3D12DeviceRaytracingPrototype);
+MAKE_SMART_COM_PTR(ID3D12CommandListRaytracingPrototype);
+MAKE_SMART_COM_PTR(IUnknown);
 
 #endif
 
@@ -431,7 +460,7 @@ struct tr_fence
 {
     VkFence vk_fence;
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12Fence> dx_fence;
+    ID3D12FencePtr dx_fence;
 #endif
 };
 
@@ -451,9 +480,9 @@ struct tr_queue
     uint32_t vk_queue_family_index;
 
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12CommandQueue> dx_queue;
+    ID3D12CommandQueuePtr dx_queue;
     HANDLE dx_wait_idle_fence_event;
-    ComPtr<ID3D12Fence> dx_wait_idle_fence;
+    ID3D12FencePtr dx_wait_idle_fence;
     UINT64 dx_wait_idle_fence_value;
 #endif
 };
@@ -486,14 +515,14 @@ struct tr_renderer
     // Use IDXGIFactory4 for now since IDXGIFactory5
     // creates problems for the Visual Studio graphics
     // debugger.
-    ComPtr<IDXGIFactory4> dx_factory;
+    IDXGIFactory4Ptr dx_factory;
     uint32_t dx_gpu_count;
-    ComPtr<IDXGIAdapter3> dx_gpus[tr_max_gpus];
-    ComPtr<IDXGIAdapter3> dx_active_gpu;
-    ComPtr<ID3D12Device> dx_device;
+    IDXGIAdapter3Ptr dx_gpus[tr_max_gpus];
+    IDXGIAdapter3Ptr dx_active_gpu;
+    ID3D12DevicePtr dx_device;
     // Use IDXGISwapChain3 for now since IDXGISwapChain4
     // isn't supported by older devices.
-    ComPtr<IDXGISwapChain3> dx_swapchain;
+    IDXGISwapChain3Ptr dx_swapchain;
 #endif
 };
 
@@ -521,8 +550,8 @@ struct tr_descriptor_set
     VkDescriptorSet vk_descriptor_set;
     VkDescriptorPool vk_descriptor_pool;
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12DescriptorHeap> dx_cbvsrvuav_heap;
-    ComPtr<ID3D12DescriptorHeap> dx_sampler_heap;
+    ID3D12DescriptorHeapPtr dx_cbvsrvuav_heap;
+    ID3D12DescriptorHeapPtr dx_sampler_heap;
 #endif
 };
 
@@ -531,7 +560,7 @@ struct tr_cmd_pool
     tr_renderer* renderer;
     VkCommandPool vk_cmd_pool;
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12CommandAllocator> dx_cmd_alloc;
+    ID3D12CommandAllocatorPtr dx_cmd_alloc;
 #endif
 };
 
@@ -540,7 +569,7 @@ struct tr_cmd
     tr_cmd_pool* cmd_pool;
     VkCommandBuffer vk_cmd_buf;
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12GraphicsCommandList> dx_cmd_list;
+    ID3D12GraphicsCommandListPtr dx_cmd_list;
 #endif
 };
 
@@ -565,7 +594,7 @@ struct tr_buffer
     // Used for uniform texel and storage texel buffers
     VkBufferView vk_buffer_view;
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12Resource> dx_resource;
+    ID3D12ResourcePtr dx_resource;
     D3D12_CONSTANT_BUFFER_VIEW_DESC dx_cbv_view_desc;
     D3D12_SHADER_RESOURCE_VIEW_DESC dx_srv_view_desc;
     D3D12_UNORDERED_ACCESS_VIEW_DESC dx_uav_view_desc;
@@ -599,7 +628,7 @@ struct tr_texture
     VkDescriptorImageInfo vk_texture_view;
 
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12Resource> dx_resource;
+    ID3D12ResourcePtr dx_resource;
     D3D12_SHADER_RESOURCE_VIEW_DESC dx_srv_view_desc;
     D3D12_UNORDERED_ACCESS_VIEW_DESC dx_uav_view_desc;
 #endif
@@ -633,12 +662,12 @@ struct tr_shader_program
     std::string comp_entry_point;
 
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3DBlob> dx_vert;
-    ComPtr<ID3DBlob> dx_hull;
-    ComPtr<ID3DBlob> dx_domn;
-    ComPtr<ID3DBlob> dx_geom;
-    ComPtr<ID3DBlob> dx_frag;
-    ComPtr<ID3DBlob> dx_comp;
+    ID3DBlobPtr dx_vert;
+    ID3DBlobPtr dx_hull;
+    ID3DBlobPtr dx_domn;
+    ID3DBlobPtr dx_geom;
+    ID3DBlobPtr dx_frag;
+    ID3DBlobPtr dx_comp;
 #endif
 };
 
@@ -677,8 +706,8 @@ struct tr_pipeline
     VkPipeline vk_pipeline;
 
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12RootSignature> dx_root_signature;
-    ComPtr<ID3D12PipelineState> dx_pipeline_state;
+    ID3D12RootSignaturePtr dx_root_signature;
+    ID3D12PipelineStatePtr dx_pipeline_state;
 #endif
 };
 
@@ -699,8 +728,8 @@ struct tr_render_target
     VkFramebuffer vk_framebuffer;
 
 #if defined(TINY_RENDERER_MSW)
-    ComPtr<ID3D12DescriptorHeap> dx_rtv_heap;
-    ComPtr<ID3D12DescriptorHeap> dx_dsv_heap;
+    ID3D12DescriptorHeapPtr dx_rtv_heap;
+    ID3D12DescriptorHeapPtr dx_dsv_heap;
 #endif
 };
 

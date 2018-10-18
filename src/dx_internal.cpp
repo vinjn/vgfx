@@ -87,9 +87,8 @@ D3D12_RESOURCE_STATES tr_util_to_dx_resource_state_texture(tr_texture_usage_flag
 void tr_internal_dx_create_device(tr_renderer* p_renderer)
 {
 #if defined(_DEBUG)
-    ComPtr<ID3D12Debug> dx_debug_ctrl;
-    if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(dx_debug_ctrl),
-                                         (void**)&(dx_debug_ctrl))))
+    ID3D12DebugPtr dx_debug_ctrl;
+    if (SUCCEEDED(D3D12GetDebugInterface(__uuidof(dx_debug_ctrl), (void**)&(dx_debug_ctrl))))
     {
         dx_debug_ctrl->EnableDebugLayer();
     }
@@ -109,7 +108,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
         gpu_feature_levels[i] = (D3D_FEATURE_LEVEL)0;
     }
 
-    ComPtr<IDXGIAdapter1> adapter;
+    IDXGIAdapter1Ptr adapter;
     for (UINT i = 0; DXGI_ERROR_NOT_FOUND != p_renderer->dx_factory->EnumAdapters1(i, &adapter);
          ++i)
     {
@@ -121,24 +120,26 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
             continue;
         }
 
-        static const UUID D3D12RaytracingPrototype = { /* 5d15d3b2-015a-4f39-8d47-299ac37190d3 */
+        static const UUID D3D12RaytracingPrototype = {
+            /* 5d15d3b2-015a-4f39-8d47-299ac37190d3 */
             0x5d15d3b2,
             0x015a,
             0x4f39,
-            { 0x8d, 0x47, 0x29, 0x9a, 0xc3, 0x71, 0x90, 0xd3 }
-        };
+            {0x8d, 0x47, 0x29, 0x9a, 0xc3, 0x71, 0x90, 0xd3}};
         HRESULT hr = D3D12EnableExperimentalFeatures(1, &D3D12RaytracingPrototype, NULL, NULL);
         if (FAILED(hr))
         {
-            printf("Could not enable raytracing (D3D12EnableExperimentalFeatures() failed).\n" \
-                "Possible reasons:\n" \
-                "  1) your OS is not in developer mode\n" \
-                "  2) your GPU driver doesn't match the D3D12 runtime loaded by the app (d3d12.dll and friends)\n" \
-                "  3) your D3D12 runtime doesn't match the D3D12 headers used by your app (in particular, the GUID passed to D3D12EnableExperimentalFeatures)\n\n");
+            printf("Could not enable raytracing (D3D12EnableExperimentalFeatures() failed).\n"
+                   "Possible reasons:\n"
+                   "  1) your OS is not in developer mode\n"
+                   "  2) your GPU driver doesn't match the D3D12 runtime loaded by the app "
+                   "(d3d12.dll and friends)\n"
+                   "  3) your D3D12 runtime doesn't match the D3D12 headers used by your app (in "
+                   "particular, the GUID passed to D3D12EnableExperimentalFeatures)\n\n");
         }
 
         // Make sure the adapter can support a D3D12 device
-        if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1,
+        if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1,
                                         __uuidof(p_renderer->dx_device), NULL)))
         {
             hres = adapter->QueryInterface(
@@ -149,7 +150,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
                 ++p_renderer->dx_gpu_count;
             }
         }
-        else if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0,
+        else if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0,
                                              __uuidof(p_renderer->dx_device), NULL)))
         {
             hres = adapter->QueryInterface(
@@ -160,7 +161,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
                 ++p_renderer->dx_gpu_count;
             }
         }
-        else if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_1,
+        else if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_1,
                                              __uuidof(p_renderer->dx_device), NULL)))
         {
             hres = adapter->QueryInterface(
@@ -171,7 +172,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
                 ++p_renderer->dx_gpu_count;
             }
         }
-        else if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0,
+        else if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
                                              __uuidof(p_renderer->dx_device), NULL)))
         {
             hres = adapter->QueryInterface(
@@ -190,7 +191,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
     {
         if (gpu_feature_levels[i] == D3D_FEATURE_LEVEL_12_1)
         {
-            p_renderer->dx_active_gpu = p_renderer->dx_gpus[i].Get();
+            p_renderer->dx_active_gpu = p_renderer->dx_gpus[i];
             break;
         }
     }
@@ -201,7 +202,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
         {
             if (gpu_feature_levels[i] == D3D_FEATURE_LEVEL_12_0)
             {
-                p_renderer->dx_active_gpu = p_renderer->dx_gpus[i].Get();
+                p_renderer->dx_active_gpu = p_renderer->dx_gpus[i];
                 target_feature_level = D3D_FEATURE_LEVEL_12_0;
                 break;
             }
@@ -233,7 +234,7 @@ void tr_internal_dx_create_device(tr_renderer* p_renderer)
         target_feature_level = D3D_FEATURE_LEVEL_12_0;
     }
 
-    hres = D3D12CreateDevice(p_renderer->dx_active_gpu.Get(), target_feature_level,
+    hres = D3D12CreateDevice(p_renderer->dx_active_gpu, target_feature_level,
                              __uuidof(p_renderer->dx_device), (void**)(&p_renderer->dx_device));
     assert(SUCCEEDED(hres));
 
@@ -297,10 +298,10 @@ void tr_internal_dx_create_swapchain(tr_renderer* p_renderer)
 
     p_renderer->settings.swapchain.image_count = desc.BufferCount;
 
-    ComPtr<IDXGISwapChain1> swapchain;
+    IDXGISwapChain1Ptr swapchain;
     HRESULT hres = p_renderer->dx_factory->CreateSwapChainForHwnd(
-        p_renderer->present_queue->dx_queue.Get(), p_renderer->settings.handle.hwnd, &desc, NULL,
-        NULL, &swapchain);
+        p_renderer->present_queue->dx_queue, p_renderer->settings.handle.hwnd, &desc, NULL, NULL,
+        &swapchain);
     assert(SUCCEEDED(hres));
 
     hres = p_renderer->dx_factory->MakeWindowAssociation(p_renderer->settings.handle.hwnd,
@@ -492,7 +493,7 @@ void tr_internal_dx_create_cmd(tr_cmd_pool* p_cmd_pool, bool secondary, tr_cmd* 
 
     ID3D12PipelineState* initialState = NULL;
     HRESULT hres = p_cmd_pool->renderer->dx_device->CreateCommandList(
-        0, D3D12_COMMAND_LIST_TYPE_DIRECT, p_cmd_pool->dx_cmd_alloc.Get(), initialState,
+        0, D3D12_COMMAND_LIST_TYPE_DIRECT, p_cmd_pool->dx_cmd_alloc, initialState,
         IID_PPV_ARGS(&p_cmd->dx_cmd_list));
     assert(SUCCEEDED(hres));
 
@@ -713,7 +714,7 @@ void tr_internal_dx_create_texture(tr_renderer* p_renderer, tr_texture* p_textur
 
     p_texture->renderer = p_renderer;
 
-    if (NULL == p_texture->dx_resource.Get())
+    if (NULL == p_texture->dx_resource)
     {
         D3D12_RESOURCE_DIMENSION res_dim = D3D12_RESOURCE_DIMENSION_UNKNOWN;
         switch (p_texture->type)
@@ -1001,7 +1002,7 @@ void tr_internal_dx_create_shader_program(
             }
 
             D3D_SHADER_MACRO macros[] = {"D3D12", "1", NULL, NULL};
-            ComPtr<ID3DBlob> error_msgs;
+            ID3DBlobPtr error_msgs;
             HRESULT hres =
                 D3DCompile2(source, source_len, source_name, macros, NULL, entry_point, target,
                             compile_flags, 0, 0, NULL, 0, compiled_code, &error_msgs);
@@ -1230,8 +1231,8 @@ void tr_internal_dx_create_root_signature(tr_renderer* p_renderer,
         desc.Desc_1_0.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     }
 
-    ComPtr<ID3DBlob> sig_blob;
-    ComPtr<ID3DBlob> error_msgs;
+    ID3DBlobPtr sig_blob;
+    ID3DBlobPtr error_msgs;
     if (D3D_ROOT_SIGNATURE_VERSION_1_1 == feature_data.HighestVersion)
     {
         hres = fnD3D12SerializeVersionedRootSignature(&desc, &sig_blob, &error_msgs);
@@ -1526,7 +1527,7 @@ void tr_internal_dx_create_pipeline_state(tr_renderer* p_renderer,
     assert(topology != D3D_PRIMITIVE_TOPOLOGY_UNDEFINED);
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_state_desc = {};
-    pipeline_state_desc.pRootSignature = p_pipeline->dx_root_signature.Get();
+    pipeline_state_desc.pRootSignature = p_pipeline->dx_root_signature;
     pipeline_state_desc.VS = VS;
     pipeline_state_desc.PS = PS;
     pipeline_state_desc.DS = DS;
@@ -1596,7 +1597,7 @@ void tr_internal_dx_create_compute_pipeline_state(tr_renderer* p_renderer,
     cached_pso_desc.CachedBlobSizeInBytes = 0;
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pipeline_state_desc = {};
-    pipeline_state_desc.pRootSignature = p_pipeline->dx_root_signature.Get();
+    pipeline_state_desc.pRootSignature = p_pipeline->dx_root_signature;
     pipeline_state_desc.CS = CS;
     pipeline_state_desc.NodeMask = 0;
     pipeline_state_desc.CachedPSO = cached_pso_desc;
@@ -1657,20 +1658,18 @@ void tr_internal_dx_create_render_target(tr_renderer* p_renderer, bool is_swapch
             if (p_render_target->sample_count > tr_sample_count_1)
             {
                 assert(NULL != p_render_target->color_attachments_multisample[i]);
-                assert(NULL !=
-                       p_render_target->color_attachments_multisample[i]->dx_resource.Get());
+                assert(NULL != p_render_target->color_attachments_multisample[i]->dx_resource);
 
                 p_renderer->dx_device->CreateRenderTargetView(
-                    p_render_target->color_attachments_multisample[i]->dx_resource.Get(), NULL,
-                    handle);
+                    p_render_target->color_attachments_multisample[i]->dx_resource, NULL, handle);
             }
             else
             {
                 assert(NULL != p_render_target->color_attachments[i]);
-                assert(NULL != p_render_target->color_attachments[i]->dx_resource.Get());
+                assert(NULL != p_render_target->color_attachments[i]->dx_resource);
 
                 p_renderer->dx_device->CreateRenderTargetView(
-                    p_render_target->color_attachments[i]->dx_resource.Get(), NULL, handle);
+                    p_render_target->color_attachments[i]->dx_resource, NULL, handle);
             }
             handle.ptr += inc_size;
         }
@@ -1696,20 +1695,18 @@ void tr_internal_dx_create_render_target(tr_renderer* p_renderer, bool is_swapch
         if (p_render_target->sample_count > tr_sample_count_1)
         {
             assert(NULL != p_render_target->depth_stencil_attachment_multisample);
-            assert(NULL !=
-                   p_render_target->depth_stencil_attachment_multisample->dx_resource.Get());
+            assert(NULL != p_render_target->depth_stencil_attachment_multisample->dx_resource);
 
             p_renderer->dx_device->CreateDepthStencilView(
-                p_render_target->depth_stencil_attachment_multisample->dx_resource.Get(), NULL,
-                handle);
+                p_render_target->depth_stencil_attachment_multisample->dx_resource, NULL, handle);
         }
         else
         {
             assert(NULL != p_render_target->depth_stencil_attachment);
-            assert(NULL != p_render_target->depth_stencil_attachment->dx_resource.Get());
+            assert(NULL != p_render_target->depth_stencil_attachment->dx_resource);
 
             p_renderer->dx_device->CreateDepthStencilView(
-                p_render_target->depth_stencil_attachment->dx_resource.Get(), NULL, handle);
+                p_render_target->depth_stencil_attachment->dx_resource, NULL, handle);
         }
     }
 }
@@ -1790,7 +1787,7 @@ void tr_internal_dx_update_descriptor_set(tr_renderer* p_renderer,
             {
                 assert(NULL != descriptor->uniform_buffers[i]);
 
-                ID3D12Resource* resource = descriptor->uniform_buffers[i]->dx_resource.Get();
+                ID3D12Resource* resource = descriptor->uniform_buffers[i]->dx_resource;
                 D3D12_CONSTANT_BUFFER_VIEW_DESC* view_desc =
                     &(descriptor->uniform_buffers[i]->dx_cbv_view_desc);
                 p_renderer->dx_device->CreateConstantBufferView(view_desc, handle);
@@ -1813,7 +1810,7 @@ void tr_internal_dx_update_descriptor_set(tr_renderer* p_renderer,
             {
                 assert(NULL != descriptor->buffers[i]);
 
-                ID3D12Resource* resource = descriptor->buffers[i]->dx_resource.Get();
+                ID3D12Resource* resource = descriptor->buffers[i]->dx_resource;
                 D3D12_SHADER_RESOURCE_VIEW_DESC* view_desc =
                     &(descriptor->buffers[i]->dx_srv_view_desc);
                 p_renderer->dx_device->CreateShaderResourceView(resource, view_desc, handle);
@@ -1836,13 +1833,13 @@ void tr_internal_dx_update_descriptor_set(tr_renderer* p_renderer,
             {
                 assert(NULL != descriptor->buffers[i]);
 
-                ID3D12Resource* resource = descriptor->buffers[i]->dx_resource.Get();
+                ID3D12Resource* resource = descriptor->buffers[i]->dx_resource;
                 D3D12_UNORDERED_ACCESS_VIEW_DESC* view_desc =
                     &(descriptor->buffers[i]->dx_uav_view_desc);
                 if (descriptor->buffers[i]->counter_buffer != NULL)
                 {
                     ID3D12Resource* counter_resource =
-                        descriptor->buffers[i]->counter_buffer->dx_resource.Get();
+                        descriptor->buffers[i]->counter_buffer->dx_resource;
                     p_renderer->dx_device->CreateUnorderedAccessView(resource, counter_resource,
                                                                      view_desc, handle);
                 }
@@ -1869,7 +1866,7 @@ void tr_internal_dx_update_descriptor_set(tr_renderer* p_renderer,
             {
                 assert(NULL != descriptor->textures[i]);
 
-                ID3D12Resource* resource = descriptor->textures[i]->dx_resource.Get();
+                ID3D12Resource* resource = descriptor->textures[i]->dx_resource;
                 D3D12_SHADER_RESOURCE_VIEW_DESC* view_desc =
                     &(descriptor->textures[i]->dx_srv_view_desc);
                 p_renderer->dx_device->CreateShaderResourceView(resource, view_desc, handle);
@@ -1891,7 +1888,7 @@ void tr_internal_dx_update_descriptor_set(tr_renderer* p_renderer,
             {
                 assert(NULL != descriptor->textures[i]);
 
-                ID3D12Resource* resource = descriptor->textures[i]->dx_resource.Get();
+                ID3D12Resource* resource = descriptor->textures[i]->dx_resource;
                 D3D12_UNORDERED_ACCESS_VIEW_DESC* view_desc =
                     &(descriptor->textures[i]->dx_uav_view_desc);
                 p_renderer->dx_device->CreateUnorderedAccessView(resource, NULL, view_desc, handle);
@@ -1914,7 +1911,7 @@ void tr_internal_dx_begin_cmd(tr_cmd* p_cmd)
     HRESULT hres = p_cmd->cmd_pool->dx_cmd_alloc->Reset();
     assert(SUCCEEDED(hres));
 
-    hres = p_cmd->dx_cmd_list->Reset(p_cmd->cmd_pool->dx_cmd_alloc.Get(), NULL);
+    hres = p_cmd->dx_cmd_list->Reset(p_cmd->cmd_pool->dx_cmd_alloc, NULL);
     assert(SUCCEEDED(hres));
 }
 
@@ -1983,7 +1980,7 @@ void tr_internal_dx_cmd_end_render(tr_cmd* p_cmd)
                                                     tr_texture_usage_resolve_src);
                 // Resolve from multisample to single sample
                 p_cmd->dx_cmd_list->ResolveSubresource(
-                    ss_attachment->dx_resource.Get(), 0, ms_attachment->dx_resource.Get(), 0,
+                    ss_attachment->dx_resource, 0, ms_attachment->dx_resource, 0,
                     tr_util_to_dx_format(render_target->color_format));
                 // Put it back the way we found it
                 tr_internal_dx_cmd_image_transition(p_cmd, ss_attachment,
@@ -2068,7 +2065,7 @@ void tr_internal_dx_cmd_bind_pipeline(tr_cmd* p_cmd, tr_pipeline* p_pipeline)
     assert(NULL != p_pipeline->dx_pipeline_state);
     assert(NULL != p_pipeline->dx_root_signature);
 
-    p_cmd->dx_cmd_list->SetPipelineState(p_pipeline->dx_pipeline_state.Get());
+    p_cmd->dx_cmd_list->SetPipelineState(p_pipeline->dx_pipeline_state);
 
     if (p_pipeline->type == tr_pipeline_type_graphics)
     {
@@ -2107,12 +2104,12 @@ void tr_internal_dx_cmd_bind_pipeline(tr_cmd* p_cmd, tr_pipeline* p_pipeline)
         }
         assert(D3D_PRIMITIVE_TOPOLOGY_UNDEFINED != topology);
 
-        p_cmd->dx_cmd_list->SetGraphicsRootSignature(p_pipeline->dx_root_signature.Get());
+        p_cmd->dx_cmd_list->SetGraphicsRootSignature(p_pipeline->dx_root_signature);
         p_cmd->dx_cmd_list->IASetPrimitiveTopology(topology);
     }
     else if (p_pipeline->type == tr_pipeline_type_compute)
     {
-        p_cmd->dx_cmd_list->SetComputeRootSignature(p_pipeline->dx_root_signature.Get());
+        p_cmd->dx_cmd_list->SetComputeRootSignature(p_pipeline->dx_root_signature);
     }
 }
 
@@ -2125,12 +2122,12 @@ void tr_internal_dx_cmd_bind_descriptor_sets(tr_cmd* p_cmd, tr_pipeline* p_pipel
     ID3D12DescriptorHeap* descriptor_heaps[2];
     if (NULL != p_descriptor_set->dx_cbvsrvuav_heap)
     {
-        descriptor_heaps[descriptor_heap_count] = p_descriptor_set->dx_cbvsrvuav_heap.Get();
+        descriptor_heaps[descriptor_heap_count] = p_descriptor_set->dx_cbvsrvuav_heap;
         ++descriptor_heap_count;
     }
     if (NULL != p_descriptor_set->dx_sampler_heap)
     {
-        descriptor_heaps[descriptor_heap_count] = p_descriptor_set->dx_sampler_heap.Get();
+        descriptor_heaps[descriptor_heap_count] = p_descriptor_set->dx_sampler_heap;
         ++descriptor_heap_count;
     }
 
@@ -2236,12 +2233,12 @@ void tr_internal_dx_cmd_buffer_transition(tr_cmd* p_cmd, tr_buffer* p_buffer,
                                           tr_buffer_usage old_usage, tr_buffer_usage new_usage)
 {
     assert(NULL != p_cmd->dx_cmd_list);
-    assert(NULL != p_buffer->dx_resource.Get());
+    assert(NULL != p_buffer->dx_resource);
 
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = p_buffer->dx_resource.Get();
+    barrier.Transition.pResource = p_buffer->dx_resource;
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     barrier.Transition.StateBefore = tr_util_to_dx_resource_state_buffer(old_usage);
     barrier.Transition.StateAfter = tr_util_to_dx_resource_state_buffer(new_usage);
@@ -2253,12 +2250,12 @@ void tr_internal_dx_cmd_image_transition(tr_cmd* p_cmd, tr_texture* p_texture,
                                          tr_texture_usage old_usage, tr_texture_usage new_usage)
 {
     assert(NULL != p_cmd->dx_cmd_list);
-    assert(NULL != p_texture->dx_resource.Get());
+    assert(NULL != p_texture->dx_resource);
 
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = p_texture->dx_resource.Get();
+    barrier.Transition.pResource = p_texture->dx_resource;
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     barrier.Transition.StateBefore = tr_util_to_dx_resource_state_texture(old_usage);
     barrier.Transition.StateAfter = tr_util_to_dx_resource_state_texture(new_usage);
@@ -2369,11 +2366,11 @@ void tr_internal_dx_cmd_copy_buffer_to_texture2d(tr_cmd* p_cmd, uint32_t width, 
     layout.Footprint.RowPitch = row_pitch;
 
     D3D12_TEXTURE_COPY_LOCATION src = {};
-    src.pResource = p_buffer->dx_resource.Get();
+    src.pResource = p_buffer->dx_resource;
     src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     src.PlacedFootprint = layout;
     D3D12_TEXTURE_COPY_LOCATION dst = {};
-    dst.pResource = p_texture->dx_resource.Get();
+    dst.pResource = p_texture->dx_resource;
     dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     dst.SubresourceIndex = mip_level;
 
@@ -2402,7 +2399,7 @@ void tr_internal_dx_queue_submit(tr_queue* p_queue, uint32_t cmd_count, tr_cmd**
     uint32_t count = cmd_count > tr_max_submit_cmds ? tr_max_submit_cmds : cmd_count;
     for (uint32_t i = 0; i < count; ++i)
     {
-        cmds[i] = pp_cmds[i]->dx_cmd_list.Get();
+        cmds[i] = pp_cmds[i]->dx_cmd_list;
     }
 
     p_queue->dx_queue->ExecuteCommandLists(count, cmds);
@@ -2426,7 +2423,7 @@ void tr_internal_dx_queue_wait_idle(tr_queue* p_queue)
 
     // Signal and increment the fence value
     const UINT64 fence_value = p_queue->dx_wait_idle_fence_value;
-    p_queue->dx_queue->Signal(p_queue->dx_wait_idle_fence.Get(), fence_value);
+    p_queue->dx_queue->Signal(p_queue->dx_wait_idle_fence, fence_value);
     ++p_queue->dx_wait_idle_fence_value;
 
     // Wait until the previous frame is finished.
