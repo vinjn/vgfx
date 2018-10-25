@@ -345,9 +345,7 @@ void tr_internal_vk_create_instance(const char* app_name, tr_renderer* p_rendere
         tr_internal_log(tr_log_type_info, exts[i].extensionName, "vkinstance-ext");
     }
 
-    VkApplicationInfo app_info = {};
-    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pNext = NULL;
+    VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
     app_info.pApplicationName = app_name;
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName = "vgfx";
@@ -405,9 +403,7 @@ void tr_internal_vk_create_instance(const char* app_name, tr_renderer* p_rendere
             }
         }
 
-        VkInstanceCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        create_info.pNext = NULL;
+        VkInstanceCreateInfo create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
         create_info.flags = 0;
         create_info.pApplicationInfo = &app_info;
         create_info.enabledLayerCount = p_renderer->settings.instance_layers.size();
@@ -601,9 +597,7 @@ void tr_internal_vk_create_device(tr_renderer* p_renderer)
     gpu_features.multiViewport = VK_FALSE;
     gpu_features.geometryShader = VK_TRUE;
 
-    VkDeviceCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    create_info.pNext = NULL;
+    VkDeviceCreateInfo create_info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     create_info.flags = 0;
     create_info.queueCreateInfoCount = queue_create_infos_count;
     create_info.pQueueCreateInfos = queue_create_infos;
@@ -767,9 +761,7 @@ void tr_internal_vk_create_swapchain(tr_renderer* p_renderer)
             queue_family_indices[1] = p_renderer->present_queue->vk_queue_family_index;
         }
 
-        VkSwapchainCreateInfoKHR create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        create_info.pNext = NULL;
+        VkSwapchainCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
         create_info.flags = 0;
         create_info.surface = p_renderer->vk_surface;
         create_info.minImageCount = p_renderer->settings.swapchain.image_count;
@@ -1191,9 +1183,7 @@ void tr_internal_vk_create_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
     bool found_memmory = tr_util_vk_get_memory_type(mem_reqs, mem_flags, &memory_type_index);
     assert(found_memmory);
 
-    VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.pNext = NULL;
+    VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     alloc_info.allocationSize = mem_reqs.size;
     alloc_info.memoryTypeIndex = memory_type_index;
     vk_res = vkAllocateMemory(p_renderer->vk_device, &alloc_info, NULL, &(p_buffer->vk_memory));
@@ -1341,9 +1331,7 @@ void tr_internal_vk_create_texture(tr_renderer* p_renderer, tr_texture* p_textur
         bool found_memory = tr_util_vk_get_memory_type(mem_reqs, mem_flags, &memory_type_index);
         assert(found_memory);
 
-        VkMemoryAllocateInfo alloc_info = {};
-        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        alloc_info.pNext = NULL;
+        VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
         alloc_info.allocationSize = mem_reqs.size;
         alloc_info.memoryTypeIndex = memory_type_index;
         vk_res =

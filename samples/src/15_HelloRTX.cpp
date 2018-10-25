@@ -226,73 +226,65 @@ void createAccelerationStructures()
 
 #else
 
-struct VkGeometryInstance
-{
-    float transform[12];
-    uint32_t instanceId : 24;
-    uint32_t mask : 8;
-    uint32_t instanceOffset : 24;
-    uint32_t flags : 8;
-    uint64_t accelerationStructureHandle;
-};
-
 struct AccelerationStructureBuffers
 {
-    VkDeviceMemory pScratch;
-    VkDeviceMemory memory;
-    VkAccelerationStructureNVX AS;
-    VkAccelerationStructureNVX pInstanceDesc; // Used only for top-level AS
+    VkBuffer scratchBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory scratchMem = VK_NULL_HANDLE;
+    VkBuffer resultBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory resultMem = VK_NULL_HANDLE;
+    VkBuffer instancesBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory instancesMem = VK_NULL_HANDLE;
+    VkAccelerationStructureNVX structure = VK_NULL_HANDLE;
 };
 
 AccelerationStructureBuffers CreateAccelerationStructure(VkAccelerationStructureTypeNVX type, vector<VkGeometryNVX> geometries, uint32_t instanceCount)
 {
     AccelerationStructureBuffers newAS;
+    VkResult code = VK_SUCCESS;
 
-    VkAccelerationStructureCreateInfoNVX accelerationStructureInfo;
-    accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX;
-    accelerationStructureInfo.pNext = nullptr;
-    accelerationStructureInfo.type = type;
-    accelerationStructureInfo.flags = 0;
-    accelerationStructureInfo.compactedSize = 0;
-    accelerationStructureInfo.instanceCount = instanceCount;
-    accelerationStructureInfo.geometryCount = geometries.size();
-    accelerationStructureInfo.pGeometries = geometries.data();
+    // newAS.structure
+    VkAccelerationStructureCreateInfoNVX structureInfo = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX };
+    {
+        structureInfo.type = type;
+        structureInfo.flags = 0;
+        structureInfo.compactedSize = 0;
+        structureInfo.instanceCount = instanceCount;
+        structureInfo.geometryCount = geometries.size();
+        structureInfo.pGeometries = geometries.data();
 
-    VkResult code = tr_get_renderer().vkCreateAccelerationStructureNVX(tr_get_renderer().vk_device,
-                                                     &accelerationStructureInfo, nullptr, &newAS.AS);
-    assert(code == VK_SUCCESS);
+        code = tr_get_renderer().vkCreateAccelerationStructureNVX(tr_get_renderer().vk_device,
+            &structureInfo, nullptr, &newAS.structure);
+        assert(code == VK_SUCCESS);
+    }
 
-    VkAccelerationStructureMemoryRequirementsInfoNVX memoryRequirementsInfo;
-    memoryRequirementsInfo.sType =
-        VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX;
-    memoryRequirementsInfo.pNext = nullptr;
-    memoryRequirementsInfo.accelerationStructure = newAS.AS;
+    // newAS.resultMem
+    VkMemoryAllocateInfo resultMemInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    {
+        VkMemoryRequirements2 ASMemReq;
+        VkAccelerationStructureMemoryRequirementsInfoNVX memoryRequirementsInfo = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX };
+        memoryRequirementsInfo.accelerationStructure = newAS.structure;
+        tr_get_renderer().vkGetAccelerationStructureMemoryRequirementsNVX(tr_get_renderer().vk_device,
+            &memoryRequirementsInfo, &ASMemReq);
 
-    VkMemoryRequirements2 memReq2;
-    tr_get_renderer().vkGetAccelerationStructureMemoryRequirementsNVX(tr_get_renderer().vk_device,
-                                                    &memoryRequirementsInfo, &memReq2);
+        resultMemInfo.allocationSize = ASMemReq.memoryRequirements.size;
+        tr_util_vk_get_memory_type(ASMemReq.memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            &resultMemInfo.memoryTypeIndex);
+        code = vkAllocateMemory(tr_get_renderer().vk_device, &resultMemInfo, nullptr, &newAS.resultMem);
+        assert(code == VK_SUCCESS);
+    }
 
-    VkMemoryAllocateInfo memoryAllocateInfo;
-    memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAllocateInfo.pNext = nullptr;
-    memoryAllocateInfo.allocationSize = memReq2.memoryRequirements.size;
-    tr_util_vk_get_memory_type(memReq2.memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                               &memoryAllocateInfo.memoryTypeIndex);
+    // bind newAS.structure to newAS.resultMem
+    VkBindAccelerationStructureMemoryInfoNVX bindInfo = { VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX };
+    {
+        bindInfo.accelerationStructure = newAS.structure;
+        bindInfo.memory = newAS.resultMem;
+        bindInfo.memoryOffset = 0;
+        bindInfo.deviceIndexCount = 0;
+        bindInfo.pDeviceIndices = nullptr;
 
-    code = vkAllocateMemory(tr_get_renderer().vk_device, &memoryAllocateInfo, nullptr, &newAS.memory);
-    assert(code == VK_SUCCESS);
-
-    VkBindAccelerationStructureMemoryInfoNVX bindInfo;
-    bindInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX;
-    bindInfo.pNext = nullptr;
-    bindInfo.accelerationStructure = newAS.AS;
-    bindInfo.memory = newAS.memory;
-    bindInfo.memoryOffset = 0;
-    bindInfo.deviceIndexCount = 0;
-    bindInfo.pDeviceIndices = nullptr;
-
-    code = tr_get_renderer().vkBindAccelerationStructureMemoryNVX(tr_get_renderer().vk_device, 1, &bindInfo);
-    assert(code == VK_SUCCESS);
+        code = tr_get_renderer().vkBindAccelerationStructureMemoryNVX(tr_get_renderer().vk_device, 1, &bindInfo);
+        assert(code == VK_SUCCESS);
+    }
 
     return newAS;
 };

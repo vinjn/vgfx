@@ -481,6 +481,62 @@ struct tr_queue
 #endif
 };
 
+// Same memory fields for D3D12_RAYTRACING_INSTANCE_DESC vs VkGeometryInstance
+struct rtx_instance_desc
+{
+    float transform[12];
+    uint32_t instanceId : 24;
+    uint32_t mask : 8;
+    uint32_t instanceOffset : 24;
+    uint32_t flags : 8;
+    uint64_t accelerationStructureHandle;
+};
+
+enum rtx_geometry_type
+{
+    rtx_geometry_triangle = 0,
+    rtx_geometry_aabb = 1,
+};
+
+// AS = AccelerationStructure
+enum rtx_AS_type
+{
+    rtx_AS_top_level = 0,
+    rtx_AS_bottom_level = 1,
+};
+
+enum rtx_AS_build_flags
+{
+    rtx_AS_build_allow_update = 0x1,
+    rtx_AS_build_allow_compaction = 0x2,
+    rtx_AS_build_prefer_fast_trace = 0x4,
+    rtx_AS_build_prefer_fast_build = 0x8,
+    rtx_AS_build_low_memory = 0x10,
+};
+
+enum rtx_AS_copy_flags
+{
+    rtx_AS_copy_clone = 0,
+    rtx_AS_copy_compact = 0x1,
+    rtx_AS_copy_visualization_decode_for_tools = 0x2,
+    rtx_AS_copy_serialize = 0x3,
+    rtx_AS_copy_deseriaize = 0x4,
+};
+
+enum rtx_geometry_flags
+{
+    rtx_geometry_opaque = 0x1,
+    rtx_geometry_no_duplicate_any_hit_invocation = 0x2,
+};
+
+enum rtx_instance_flags
+{
+    rtx_instance_triangle_cull_disable = 0x1,
+    rtx_instance_triangle_cull_flip_winding = 0x2,
+    rtx_instance_force_opaque = 0x4,
+    rtx_instance_force_no_opaque = 0x8,
+};
+
 struct tr_renderer
 {
     tr_api api;
