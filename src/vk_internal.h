@@ -2,16 +2,6 @@
 
 #include "internal.h"
 
-// Internal utility functions (may become external one day)
-VkSampleCountFlagBits tr_util_to_vk_sample_count(tr_sample_count sample_count);
-VkBufferUsageFlags tr_util_to_vk_buffer_usage(tr_buffer_usage usage);
-VkImageUsageFlags tr_util_to_vk_image_usage(tr_texture_usage usage);
-VkImageLayout tr_util_to_vk_image_layout(tr_texture_usage usage);
-VkImageAspectFlags tr_util_vk_determine_aspect_mask(VkFormat format);
-bool tr_util_vk_get_memory_type(const VkPhysicalDeviceMemoryProperties* mem_props,
-                                uint32_t type_bits, VkMemoryPropertyFlags flags, uint32_t* p_index);
-VkFormatFeatureFlags tr_util_vk_image_usage_to_format_features(VkImageUsageFlags usage);
-
 // Internal init functions
 void tr_internal_vk_create_renderer(const char* app_name, const tr_renderer_settings* settings,
                                     tr_renderer** pp_renderer);

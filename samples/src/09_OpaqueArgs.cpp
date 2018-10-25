@@ -39,13 +39,13 @@ uint64_t s_frame_count = 0;
 
 void init_tiny_renderer(GLFWwindow* window)
 {
-    std::vector<const char*> instance_layers = {
+    std::vector<std::string> instance_layers = {
 #if defined(_DEBUG)
         "VK_LAYER_LUNARG_standard_validation",
 #endif
     };
 
-    std::vector<const char*> device_layers;
+    std::vector<std::string> device_layers;
 
     int width = 0;
     int height = 0;
@@ -74,8 +74,7 @@ void init_tiny_renderer(GLFWwindow* window)
     settings.log_fn = renderer_log;
 #if defined(TINY_RENDERER_VK)
     settings.vk_debug_fn = vulkan_debug;
-    settings.instance_layers.count = (uint32_t)instance_layers.size();
-    settings.instance_layers.names = instance_layers.empty() ? nullptr : instance_layers.data();
+    settings.instance_layers = instance_layers;
 #endif
     tr_create_renderer(k_app_name, &settings, &m_renderer);
 
@@ -149,7 +148,7 @@ void init_tiny_renderer(GLFWwindow* window)
     tr_create_texture_2d(m_renderer, image_width, image_height, tr_sample_count_1,
                          tr_format_r8g8b8a8_unorm, tr_max_mip_levels, NULL, false,
                          tr_texture_usage_sampled_image, &m_texture);
-    tr_util_update_texture_uint8(m_renderer->graphics_queue, image_width, image_height,
+    tr_queue_update_texture_uint8(m_renderer->graphics_queue, image_width, image_height,
                                  image_row_stride, image_data, image_channels, m_texture, NULL,
                                  NULL);
     stbi_image_free(image_data);

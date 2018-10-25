@@ -4,6 +4,16 @@
 
 using namespace std;
 
+#define VGFX_VK_LOAD_PROC(device, funcName)                                                        \
+    {                                                                                              \
+        p_renderer->funcName =                                                                     \
+            reinterpret_cast<PFN_##funcName>(vkGetDeviceProcAddr(device, #funcName));              \
+        if (p_renderer->funcName == nullptr)                                                       \
+        {                                                                                          \
+            printf("Can't get device function address: %s\n", #funcName);                          \
+        }                                                                                          \
+    }
+
 // These functions will need to be loaded in
 static PFN_vkCreateDebugReportCallbackEXT trVkCreateDebugReportCallbackEXT = NULL;
 static PFN_vkDestroyDebugReportCallbackEXT trVkDestroyDebugReportCallbackEXT = NULL;
@@ -15,11 +25,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL tr_internal_debug_report_callback(
     size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage,
     void* pUserData)
 {
-    if ((NULL != s_tr_internal) && (NULL != s_tr_internal->renderer) &&
-        (NULL != s_tr_internal->renderer->settings.vk_debug_fn))
+    if ((NULL != s_tr_internal) && (NULL != s_tr_internal->settings.vk_debug_fn))
     {
-        return s_tr_internal->renderer->settings.vk_debug_fn(
-            flags, objectType, object, location, messageCode, pLayerPrefix, pMessage, pUserData);
+        return s_tr_internal->settings.vk_debug_fn(flags, objectType, object, location, messageCode,
+                                                   pLayerPrefix, pMessage, pUserData);
     }
     return VK_FALSE;
 }
@@ -201,15 +210,17 @@ VkImageAspectFlags tr_util_vk_determine_aspect_mask(VkFormat format)
     return result;
 }
 
-bool tr_util_vk_get_memory_type(const VkPhysicalDeviceMemoryProperties* mem_props,
-                                uint32_t type_bits, VkMemoryPropertyFlags flags, uint32_t* p_index)
+bool tr_util_vk_get_memory_type(const VkMemoryRequirements& memoryRequiriments,
+                                VkMemoryPropertyFlags flags, uint32_t* p_index)
 {
     bool found = false;
-    for (uint32_t i = 0; i < mem_props->memoryTypeCount; ++i)
+    const auto& mem_props = tr_get_renderer().vk_memory_properties;
+    auto type_bits = memoryRequiriments.memoryTypeBits;
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i)
     {
         if (type_bits & 1)
         {
-            if (flags == (mem_props->memoryTypes[i].propertyFlags & flags))
+            if (flags == (mem_props.memoryTypes[i].propertyFlags & flags))
             {
                 if (p_index)
                 {
@@ -339,7 +350,7 @@ void tr_internal_vk_create_instance(const char* app_name, tr_renderer* p_rendere
     app_info.pNext = NULL;
     app_info.pApplicationName = app_name;
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "tinyvk";
+    app_info.pEngineName = "vgfx";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_MAKE_VERSION(1, 0, 3);
 
@@ -349,13 +360,13 @@ void tr_internal_vk_create_instance(const char* app_name, tr_renderer* p_rendere
         uint32_t extension_count = 0;
         const char* extensions[tr_max_instance_extensions] = {0};
         // Copy extensions if they're present
-        if (p_renderer->settings.device_extensions.count > 0)
+        if (p_renderer->settings.instance_extensions.size() > 0)
         {
-            for (; extension_count < p_renderer->settings.instance_extensions.count;
+            for (; extension_count < p_renderer->settings.instance_extensions.size();
                  ++extension_count)
             {
                 extensions[extension_count] =
-                    p_renderer->settings.instance_extensions.names[extension_count];
+                    p_renderer->settings.instance_extensions[extension_count].c_str();
             }
         }
         else
@@ -369,18 +380,28 @@ void tr_internal_vk_create_instance(const char* app_name, tr_renderer* p_rendere
 #endif
         }
 
-        for (uint32_t i = 0; i < p_renderer->settings.instance_layers.count; ++i)
+        for (uint32_t i = 0; i < p_renderer->settings.instance_layers.size(); ++i)
         {
             if (extension_count >= tr_max_instance_extensions)
             {
                 break;
             }
 
-            int cmp = strcmp(p_renderer->settings.instance_layers.names[i],
-                             "VK_LAYER_LUNARG_standard_validation");
-            if (cmp == 0)
+            if (p_renderer->settings.instance_layers[i] == "VK_LAYER_LUNARG_standard_validation")
             {
                 extensions[extension_count++] = VK_EXT_DEBUG_REPORT_EXTENSION_NAME;
+            }
+        }
+
+        // Device extensions
+        uint32_t layers_count = 0;
+        const char* layers[tr_max_instance_extensions] = {0};
+        // Copy extensions if they're present
+        if (p_renderer->settings.instance_layers.size() > 0)
+        {
+            for (; layers_count < p_renderer->settings.instance_layers.size(); ++layers_count)
+            {
+                layers[layers_count] = p_renderer->settings.instance_layers[layers_count].c_str();
             }
         }
 
@@ -389,8 +410,8 @@ void tr_internal_vk_create_instance(const char* app_name, tr_renderer* p_rendere
         create_info.pNext = NULL;
         create_info.flags = 0;
         create_info.pApplicationInfo = &app_info;
-        create_info.enabledLayerCount = p_renderer->settings.instance_layers.count;
-        create_info.ppEnabledLayerNames = p_renderer->settings.instance_layers.names;
+        create_info.enabledLayerCount = p_renderer->settings.instance_layers.size();
+        create_info.ppEnabledLayerNames = layers;
         create_info.enabledExtensionCount = extension_count;
         create_info.ppEnabledExtensionNames = extensions;
         VkResult vk_res = vkCreateInstance(&create_info, NULL, &(p_renderer->vk_instance));
@@ -560,12 +581,12 @@ void tr_internal_vk_create_device(tr_renderer* p_renderer)
     uint32_t extension_count = 0;
     const char* extensions[tr_max_instance_extensions] = {0};
     // Copy extensions if they're present
-    if (p_renderer->settings.device_extensions.count > 0)
+    if (p_renderer->settings.device_extensions.size() > 0)
     {
-        for (; extension_count < p_renderer->settings.device_extensions.count; ++extension_count)
+        for (; extension_count < p_renderer->settings.device_extensions.size(); ++extension_count)
         {
             extensions[extension_count] =
-                p_renderer->settings.device_extensions.names[extension_count];
+                p_renderer->settings.device_extensions[extension_count].c_str();
         }
     }
     else
@@ -602,6 +623,25 @@ void tr_internal_vk_create_device(tr_renderer* p_renderer)
     vkGetDeviceQueue(p_renderer->vk_device, p_renderer->present_queue->vk_queue_family_index, 0,
                      &(p_renderer->present_queue->vk_queue));
     assert(VK_NULL_HANDLE != p_renderer->present_queue->vk_queue);
+
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkCreateAccelerationStructureNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkDestroyAccelerationStructureNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkGetAccelerationStructureMemoryRequirementsNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device,
+                      vkGetAccelerationStructureScratchMemoryRequirementsNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkCmdCopyAccelerationStructureNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkBindAccelerationStructureMemoryNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkCmdBuildAccelerationStructureNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkCmdTraceRaysNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkGetRaytracingShaderHandlesNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkCreateRaytracingPipelinesNVX);
+    VGFX_VK_LOAD_PROC(p_renderer->vk_device, vkGetAccelerationStructureHandleNVX);
+
+    // Query values of shaderHeaderSize and maxRecursionDepth in current implementation
+    VkPhysicalDeviceProperties2 props;
+    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props.pNext = &p_renderer->_raytracingProperties;
+    vkGetPhysicalDeviceProperties2(p_renderer->vk_active_gpu, &props);
 }
 
 void tr_internal_vk_create_swapchain(tr_renderer* p_renderer)
@@ -1148,8 +1188,7 @@ void tr_internal_vk_create_buffer(tr_renderer* p_renderer, tr_buffer* p_buffer)
     }
 
     uint32_t memory_type_index = UINT32_MAX;
-    bool found_memmory = tr_util_vk_get_memory_type(
-        &p_renderer->vk_memory_properties, mem_reqs.memoryTypeBits, mem_flags, &memory_type_index);
+    bool found_memmory = tr_util_vk_get_memory_type(mem_reqs, mem_flags, &memory_type_index);
     assert(found_memmory);
 
     VkMemoryAllocateInfo alloc_info = {};
@@ -1299,9 +1338,7 @@ void tr_internal_vk_create_texture(tr_renderer* p_renderer, tr_texture* p_textur
         }
 
         uint32_t memory_type_index = UINT32_MAX;
-        bool found_memory =
-            tr_util_vk_get_memory_type(&p_renderer->vk_memory_properties, mem_reqs.memoryTypeBits,
-                                       mem_flags, &memory_type_index);
+        bool found_memory = tr_util_vk_get_memory_type(mem_reqs, mem_flags, &memory_type_index);
         assert(found_memory);
 
         VkMemoryAllocateInfo alloc_info = {};
@@ -3305,8 +3342,7 @@ void tr_internal_vk_queue_present(tr_queue* p_queue, uint32_t wait_semaphore_cou
     present_info.pImageIndices = &(renderer->swapchain_image_index);
     present_info.pResults = NULL;
 
-    VkResult vk_res =
-        vkQueuePresentKHR(s_tr_internal->renderer->present_queue->vk_queue, &present_info);
+    VkResult vk_res = vkQueuePresentKHR(s_tr_internal->present_queue->vk_queue, &present_info);
     assert(VK_SUCCESS == vk_res);
 }
 

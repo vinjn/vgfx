@@ -49,13 +49,13 @@ int m_image_row_stride = 0;
 
 void init_tiny_renderer(GLFWwindow* window)
 {
-    std::vector<const char*> instance_layers = {
+    std::vector<std::string> instance_layers = {
 #if defined(_DEBUG)
         "VK_LAYER_LUNARG_standard_validation",
 #endif
     };
 
-    std::vector<const char*> device_layers;
+    std::vector<std::string> device_layers;
 
     int width = 0;
     int height = 0;
@@ -84,8 +84,7 @@ void init_tiny_renderer(GLFWwindow* window)
     settings.log_fn = renderer_log;
 #if defined(TINY_RENDERER_VK)
     settings.vk_debug_fn = vulkan_debug;
-    settings.instance_layers.count = (uint32_t)instance_layers.size();
-    settings.instance_layers.names = instance_layers.empty() ? nullptr : instance_layers.data();
+    settings.instance_layers = instance_layers;
 #endif
     tr_create_renderer(k_app_name, &settings, &m_renderer);
 
@@ -211,23 +210,23 @@ void init_tiny_renderer(GLFWwindow* window)
     // Consume buffer
     tr_create_rw_structured_buffer(m_renderer, buffer_size, 0, element_count, struct_stride, false,
                                    &m_compute_src_counter_buffer, &m_compute_src_buffer);
-    tr_util_update_buffer(m_renderer->graphics_queue, buffer_size, image_data,
+    tr_queue_update_buffer(m_renderer->graphics_queue, buffer_size, image_data,
                           m_compute_src_buffer);
-    tr_util_set_storage_buffer_count(m_renderer->graphics_queue, 0, (uint32_t)element_count,
+    tr_queue_set_storage_buffer_count(m_renderer->graphics_queue, 0, (uint32_t)element_count,
                                      m_compute_src_counter_buffer);
     stbi_image_free(image_data);
     // Append buffer
     tr_create_rw_structured_buffer(m_renderer, buffer_size, 0, element_count, struct_stride, false,
                                    &m_compute_dst_counter_buffer, &m_compute_dst_buffer);
-    tr_util_set_storage_buffer_count(m_renderer->graphics_queue, 0, 0,
+    tr_queue_set_storage_buffer_count(m_renderer->graphics_queue, 0, 0,
                                      m_compute_dst_counter_buffer);
-    tr_util_transition_buffer(m_renderer->graphics_queue, m_compute_dst_buffer,
+    tr_queue_transition_buffer(m_renderer->graphics_queue, m_compute_dst_buffer,
                               tr_buffer_usage_storage_uav, tr_buffer_usage_transfer_src);
 
     tr_create_texture_2d(m_renderer, m_image_width, m_image_height, tr_sample_count_1,
                          tr_format_r8g8b8a8_unorm, 1, NULL, false, tr_texture_usage_sampled_image,
                          &m_texture);
-    tr_util_transition_image(m_renderer->graphics_queue, m_texture, tr_texture_usage_undefined,
+    tr_queue_transition_image(m_renderer->graphics_queue, m_texture, tr_texture_usage_undefined,
                              tr_texture_usage_sampled_image);
 
     tr_create_sampler(m_renderer, &m_sampler);

@@ -429,12 +429,6 @@ struct tr_swapchain_settings
     tr_clear_value depth_stencil_clear_value;
 };
 
-struct tr_string_list
-{
-    uint32_t count;
-    const char** names;
-};
-
 struct tr_renderer_settings
 {
     tr_platform_handle handle;
@@ -444,10 +438,10 @@ struct tr_renderer_settings
     tr_swapchain_settings swapchain;
     tr_log_fn log_fn;
     // Vulkan specific options
-    tr_string_list instance_layers;
-    tr_string_list instance_extensions;
-    // tr_string_list                      device_layers;
-    tr_string_list device_extensions;
+    std::vector<std::string> instance_layers;
+    std::vector<std::string> instance_extensions;
+    // std::vector<std::string>                      device_layers;
+    std::vector<std::string> device_extensions;
     PFN_vkDebugReportCallbackEXT vk_debug_fn;
 
 #if defined(TINY_RENDERER_MSW)
@@ -499,6 +493,8 @@ struct tr_renderer
     std::vector<tr_semaphore*> image_acquired_semaphores;
     std::vector<tr_semaphore*> render_complete_semaphores;
 
+    tr_render_target* bound_render_target;
+
     VkInstance vk_instance;
     uint32_t vk_gpu_count;
     VkPhysicalDevice vk_gpus[tr_max_gpus];
@@ -510,7 +506,26 @@ struct tr_renderer
     VkSurfaceKHR vk_surface;
     VkSwapchainKHR vk_swapchain;
     VkDebugReportCallbackEXT vk_debug_report;
+
     bool vk_device_ext_VK_AMD_negative_viewport_height;
+
+    PFN_vkCreateAccelerationStructureNVX vkCreateAccelerationStructureNVX = VK_NULL_HANDLE;
+    PFN_vkDestroyAccelerationStructureNVX vkDestroyAccelerationStructureNVX = VK_NULL_HANDLE;
+    PFN_vkGetAccelerationStructureMemoryRequirementsNVX
+        vkGetAccelerationStructureMemoryRequirementsNVX = VK_NULL_HANDLE;
+    PFN_vkGetAccelerationStructureScratchMemoryRequirementsNVX
+        vkGetAccelerationStructureScratchMemoryRequirementsNVX = VK_NULL_HANDLE;
+    PFN_vkCmdCopyAccelerationStructureNVX vkCmdCopyAccelerationStructureNVX = VK_NULL_HANDLE;
+    PFN_vkBindAccelerationStructureMemoryNVX vkBindAccelerationStructureMemoryNVX = VK_NULL_HANDLE;
+    PFN_vkCmdBuildAccelerationStructureNVX vkCmdBuildAccelerationStructureNVX = VK_NULL_HANDLE;
+    PFN_vkCmdTraceRaysNVX vkCmdTraceRaysNVX = VK_NULL_HANDLE;
+    PFN_vkGetRaytracingShaderHandlesNVX vkGetRaytracingShaderHandlesNVX = VK_NULL_HANDLE;
+    PFN_vkCreateRaytracingPipelinesNVX vkCreateRaytracingPipelinesNVX = VK_NULL_HANDLE;
+    PFN_vkGetAccelerationStructureHandleNVX vkGetAccelerationStructureHandleNVX = VK_NULL_HANDLE;
+
+    VkPhysicalDeviceRaytracingPropertiesNVX _raytracingProperties = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX};
+
 #if defined(TINY_RENDERER_MSW)
     // Use IDXGIFactory4 for now since IDXGIFactory5
     // creates problems for the Visual Studio graphics
@@ -756,6 +771,8 @@ typedef bool (*tr_image_resize_float_fn)(uint32_t src_width, uint32_t src_height
                                          uint32_t channel_cout, void* user_data);
 
 // API functions
+tr_renderer& tr_get_renderer();
+
 void tr_create_renderer(const char* app_name, const tr_renderer_settings* p_settings,
                         tr_renderer** pp_renderer);
 void tr_destroy_renderer(tr_renderer* p_renderer);
@@ -853,6 +870,7 @@ void tr_destroy_render_target(tr_renderer* p_renderer, tr_render_target* p_rende
 
 void tr_update_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_descriptor_set);
 
+// cmd
 void tr_begin_cmd(tr_cmd* p_cmd);
 void tr_end_cmd(tr_cmd* p_cmd);
 void tr_cmd_begin_render(tr_cmd* p_cmd, tr_render_target* p_render_target);
@@ -888,6 +906,8 @@ void tr_cmd_copy_buffer_to_texture2d(tr_cmd* p_cmd, uint32_t width, uint32_t hei
 
 void tr_acquire_next_image(tr_renderer* p_renderer, tr_semaphore* p_signal_semaphore,
                            tr_fence* p_fence);
+
+// queue
 void tr_queue_submit(tr_queue* p_queue, uint32_t cmd_count, tr_cmd** pp_cmds,
                      uint32_t wait_semaphore_count, tr_semaphore** pp_wait_semaphores,
                      uint32_t signal_semaphore_count, tr_semaphore** pp_signal_semaphores);
@@ -895,37 +915,47 @@ void tr_queue_present(tr_queue* p_queue, uint32_t wait_semaphore_count,
                       tr_semaphore** pp_wait_semaphores);
 void tr_queue_wait_idle(tr_queue* p_queue);
 
+void tr_queue_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage,
+                                tr_buffer_usage new_usage);
+void tr_queue_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage,
+                               tr_texture_usage new_usage);
+void tr_queue_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, uint32_t count,
+                                       tr_buffer* p_buffer);
+void tr_queue_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer);
+void tr_queue_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data,
+                            tr_buffer* p_buffer);
+void tr_queue_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
+                                   uint32_t src_row_stride, const uint8_t* p_src_data,
+                                   uint32_t src_channel_count, tr_texture* p_texture,
+                                   tr_image_resize_uint8_fn resize_fn, void* p_user_data);
+void tr_queue_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
+                                   uint32_t src_row_stride, const float* p_src_data,
+                                   uint32_t channels, tr_texture* p_texture,
+                                   tr_image_resize_float_fn resize_fn, void* p_user_data);
+
 void tr_render_target_set_color_clear_value(tr_render_target* p_render_target,
                                             uint32_t attachment_index, float r, float g, float b,
                                             float a);
 void tr_render_target_set_depth_stencil_clear_value(tr_render_target* p_render_target, float depth,
                                                     uint8_t stencil);
 
-bool tr_vertex_layout_support_format(tr_format format);
-uint32_t tr_vertex_layout_stride(const tr_vertex_layout* p_vertex_layout);
-
 // Utility functions
 uint64_t tr_util_calc_storage_counter_offset(uint64_t buffer_size);
 uint32_t tr_util_calc_mip_levels(uint32_t width, uint32_t height);
 uint32_t tr_util_format_stride(tr_format format);
 uint32_t tr_util_format_channel_count(tr_format format);
-void tr_util_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage,
-                               tr_buffer_usage new_usage);
-void tr_util_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage,
-                              tr_texture_usage new_usage);
-void tr_util_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, uint32_t count,
-                                      tr_buffer* p_buffer);
-void tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer);
-void tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data,
-                           tr_buffer* p_buffer);
-void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
-                                  uint32_t src_row_stride, const uint8_t* p_src_data,
-                                  uint32_t src_channel_count, tr_texture* p_texture,
-                                  tr_image_resize_uint8_fn resize_fn, void* p_user_data);
-void tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
-                                  uint32_t src_row_stride, const float* p_src_data,
-                                  uint32_t channels, tr_texture* p_texture,
-                                  tr_image_resize_float_fn resize_fn, void* p_user_data);
+bool tr_vertex_layout_support_format(tr_format format);
+uint32_t tr_vertex_layout_stride(const tr_vertex_layout* p_vertex_layout);
+
+// Internal utility functions (may become external one day)
+VkSampleCountFlagBits tr_util_to_vk_sample_count(tr_sample_count sample_count);
+VkBufferUsageFlags tr_util_to_vk_buffer_usage(tr_buffer_usage usage);
+VkImageUsageFlags tr_util_to_vk_image_usage(tr_texture_usage usage);
+VkImageLayout tr_util_to_vk_image_layout(tr_texture_usage usage);
+VkImageAspectFlags tr_util_vk_determine_aspect_mask(VkFormat format);
+bool tr_util_vk_get_memory_type(const VkMemoryRequirements& memoryRequiriments,
+                                VkMemoryPropertyFlags flags, uint32_t* p_index);
+VkFormatFeatureFlags tr_util_vk_image_usage_to_format_features(VkImageUsageFlags usage);
 
 std::vector<uint8_t> load_file(const std::string& path);
 

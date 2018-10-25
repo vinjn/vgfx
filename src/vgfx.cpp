@@ -6,6 +6,11 @@
 
 using namespace std;
 
+tr_renderer& tr_get_renderer()
+{
+    return *s_tr_internal;
+}
+
 void tr_destroy_renderer(tr_renderer* p_renderer)
 {
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
@@ -38,7 +43,7 @@ void tr_destroy_renderer(tr_renderer* p_renderer)
         tr_internal_vk_destroy_device(p_renderer);
         tr_internal_vk_destroy_instance(p_renderer);
 
-        delete s_tr_internal->renderer->present_queue;
+        delete s_tr_internal->present_queue;
     }
     else
     {
@@ -52,8 +57,7 @@ void tr_destroy_renderer(tr_renderer* p_renderer)
     // Destroy the Vulkan bits
 
     // Free all the renderer components!
-    delete s_tr_internal->renderer->graphics_queue;
-    delete s_tr_internal->renderer;
+    delete s_tr_internal->graphics_queue;
     delete s_tr_internal;
 }
 
@@ -776,7 +780,7 @@ void tr_destroy_render_target(tr_renderer* p_renderer, tr_render_target* p_rende
     TINY_RENDERER_RENDERER_PTR_CHECK(p_renderer);
     assert(NULL != p_render_target);
 
-    if ((s_tr_internal->renderer == p_renderer) && (NULL != p_render_target))
+    if (s_tr_internal == p_renderer)
     {
         // Destroy color attachments
         for (uint32_t i = 0; i < p_render_target->color_attachment_count; ++i)
@@ -1152,13 +1156,13 @@ uint64_t tr_util_calc_storage_counter_offset(uint64_t buffer_size)
     uint64_t alignment = D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT;
     uint64_t result = (buffer_size + (alignment - 1)) & ~(alignment - 1);
 
-    if (s_tr_internal->renderer->api == tr_api_vulkan)
+    if (s_tr_internal->api == tr_api_vulkan)
         assert(0);
 
     return result;
 }
 
-void tr_util_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, uint32_t count,
+void tr_queue_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, uint32_t count,
                                       tr_buffer* p_buffer)
 {
     assert(NULL != p_queue);
@@ -1207,7 +1211,7 @@ void tr_util_set_storage_buffer_count(tr_queue* p_queue, uint64_t count_offset, 
     tr_destroy_buffer(p_buffer->renderer, buffer);
 }
 
-void tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer)
+void tr_queue_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer)
 {
     assert(NULL != p_queue);
     assert(NULL != p_buffer);
@@ -1254,7 +1258,7 @@ void tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_buffer)
     tr_destroy_buffer(p_buffer->renderer, buffer);
 }
 
-void tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data,
+void tr_queue_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data,
                            tr_buffer* p_buffer)
 {
     assert(NULL != p_queue);
@@ -1303,7 +1307,7 @@ void tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_d
     tr_destroy_buffer(p_buffer->renderer, buffer);
 }
 
-void tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
+void tr_queue_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
                                   uint32_t src_row_stride, const uint8_t* p_src_data,
                                   uint32_t src_channel_count, tr_texture* p_texture,
                                   tr_image_resize_uint8_fn resize_fn, void* p_user_data)
@@ -1846,7 +1850,7 @@ uint32_t tr_util_format_channel_count(tr_format format)
     return result;
 }
 
-void tr_util_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage,
+void tr_queue_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer_usage old_usage,
                                tr_buffer_usage new_usage)
 {
     assert(NULL != p_queue);
@@ -1869,7 +1873,7 @@ void tr_util_transition_buffer(tr_queue* p_queue, tr_buffer* p_buffer, tr_buffer
     tr_destroy_cmd_pool(p_queue->renderer, p_cmd_pool);
 }
 
-void tr_util_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage,
+void tr_queue_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_texture_usage old_usage,
                               tr_texture_usage new_usage)
 {
     assert(NULL != p_queue);
@@ -1906,7 +1910,7 @@ void tr_util_transition_image(tr_queue* p_queue, tr_texture* p_texture, tr_textu
     tr_destroy_cmd_pool(p_queue->renderer, p_cmd_pool);
 }
 
-void tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
+void tr_queue_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height,
                                   uint32_t src_row_stride, const float* p_src_data,
                                   uint32_t channels, tr_texture* p_texture,
                                   tr_image_resize_float_fn resize_fn, void* p_user_data)
@@ -1934,18 +1938,15 @@ void tr_create_renderer(const char* app_name, const tr_renderer_settings* settin
 {
     if (NULL == s_tr_internal)
     {
-        s_tr_internal = new tr_internal_data();
+        s_tr_internal = new tr_renderer();
         assert(NULL != s_tr_internal);
 
-        s_tr_internal->renderer = new tr_renderer();
-        assert(NULL != s_tr_internal->renderer);
-
         // Shorter way to get to the object
-        tr_renderer* p_renderer = s_tr_internal->renderer;
+        tr_renderer* p_renderer = s_tr_internal;
         p_renderer->api = settings->api;
 
         // Copy settings
-        memcpy(&(p_renderer->settings), settings, sizeof(*settings));
+        p_renderer->settings = *settings;
 
         // Allocate storage for queues
         p_renderer->graphics_queue = new tr_queue();
@@ -2017,14 +2018,14 @@ void tr_create_renderer(const char* app_name, const tr_renderer_settings* settin
     }
 }
 
-tr_internal_data* s_tr_internal = NULL;
+tr_renderer* s_tr_internal = NULL;
 
 // Proxy log callback
 void tr_internal_log(tr_log_type type, const char* msg, const char* component)
 {
-    if (s_tr_internal->renderer->settings.log_fn)
+    if (s_tr_internal->settings.log_fn)
     {
-        s_tr_internal->renderer->settings.log_fn(type, msg, component);
+        s_tr_internal->settings.log_fn(type, msg, component);
     }
 }
 

@@ -11,11 +11,13 @@
 #include <sstream>
 #include <vector>
 
-#include "vgfx.h"
 #include "glm/glm.hpp"
+#include "vgfx.h"
 
-using glm::vec3;
 using glm::mat4;
+using glm::vec3;
+using std::string;
+using std::vector;
 
 const char* k_app_name = "15_HelloRTX";
 const uint32_t k_image_count = 3;
@@ -38,28 +40,19 @@ struct AccelerationStructureBuffers
 {
     ID3D12ResourcePtr pScratch;
     ID3D12ResourcePtr pResult;
-    ID3D12ResourcePtr pInstanceDesc;    // Used only for top-level AS
+    ID3D12ResourcePtr pInstanceDesc; // Used only for top-level AS
 };
 
-static const D3D12_HEAP_PROPERTIES kUploadHeapProps =
-{
-    D3D12_HEAP_TYPE_UPLOAD,
-    D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-    D3D12_MEMORY_POOL_UNKNOWN,
-    0,
-    0,
+static const D3D12_HEAP_PROPERTIES kUploadHeapProps = {
+    D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 0, 0,
 };
 
-static const D3D12_HEAP_PROPERTIES kDefaultHeapProps =
-{
-    D3D12_HEAP_TYPE_DEFAULT,
-    D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-    D3D12_MEMORY_POOL_UNKNOWN,
-    0,
-    0
-};
+static const D3D12_HEAP_PROPERTIES kDefaultHeapProps = {
+    D3D12_HEAP_TYPE_DEFAULT, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 0, 0};
 
-ID3D12ResourcePtr createBuffer(ID3D12DevicePtr pDevice, uint64_t size, D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES initState, const D3D12_HEAP_PROPERTIES& heapProps)
+ID3D12ResourcePtr createBuffer(ID3D12DevicePtr pDevice, uint64_t size, D3D12_RESOURCE_FLAGS flags,
+                               D3D12_RESOURCE_STATES initState,
+                               const D3D12_HEAP_PROPERTIES& heapProps)
 {
     D3D12_RESOURCE_DESC bufDesc = {};
     bufDesc.Alignment = 0;
@@ -75,11 +68,14 @@ ID3D12ResourcePtr createBuffer(ID3D12DevicePtr pDevice, uint64_t size, D3D12_RES
     bufDesc.Width = size;
 
     ID3D12ResourcePtr pBuffer;
-    pDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufDesc, initState, nullptr, IID_PPV_ARGS(&pBuffer));
+    pDevice->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufDesc, initState, nullptr,
+                                     IID_PPV_ARGS(&pBuffer));
     return pBuffer;
 }
 
-AccelerationStructureBuffers createBottomLevelAS(ID3D12DevicePtr pDevice, ID3D12GraphicsCommandListPtr pCmdList, ID3D12ResourcePtr pVB)
+AccelerationStructureBuffers createBottomLevelAS(ID3D12DevicePtr pDevice,
+                                                 ID3D12GraphicsCommandListPtr pCmdList,
+                                                 ID3D12ResourcePtr pVB)
 {
     D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
     geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -101,10 +97,15 @@ AccelerationStructureBuffers createBottomLevelAS(ID3D12DevicePtr pDevice, ID3D12
     ID3D12DeviceRaytracingPrototypePtr pRtDevice = pDevice;
     pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&prebuildDesc, &info);
 
-    // Create the buffers. They need to support UAV, and since we are going to immediately use them, we create them with an unordered-access state
+    // Create the buffers. They need to support UAV, and since we are going to immediately use them,
+    // we create them with an unordered-access state
     AccelerationStructureBuffers buffers;
-    buffers.pScratch = createBuffer(pDevice, info.ScratchDataSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, kDefaultHeapProps);
-    buffers.pResult = createBuffer(pDevice, info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, kDefaultHeapProps);
+    buffers.pScratch = createBuffer(pDevice, info.ScratchDataSizeInBytes,
+                                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, kDefaultHeapProps);
+    buffers.pResult = createBuffer(
+        pDevice, info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, kDefaultHeapProps);
 
     // Create the bottom-level AS
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
@@ -123,7 +124,8 @@ AccelerationStructureBuffers createBottomLevelAS(ID3D12DevicePtr pDevice, ID3D12
     ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pCmdList;
     pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
 
-    // We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
+    // We need to insert a UAV barrier before using the acceleration structures in a raytracing
+    // operation
     D3D12_RESOURCE_BARRIER uavBarrier = {};
     uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     uavBarrier.UAV.pResource = buffers.pResult;
@@ -132,7 +134,9 @@ AccelerationStructureBuffers createBottomLevelAS(ID3D12DevicePtr pDevice, ID3D12
     return buffers;
 }
 
-AccelerationStructureBuffers createTopLevelAS(ID3D12DevicePtr pDevice, ID3D12GraphicsCommandListPtr pCmdList, ID3D12ResourcePtr pBottomLevelAS, uint64_t& tlasSize)
+AccelerationStructureBuffers createTopLevelAS(ID3D12DevicePtr pDevice,
+                                              ID3D12GraphicsCommandListPtr pCmdList,
+                                              ID3D12ResourcePtr pBottomLevelAS, uint64_t& tlasSize)
 {
     // First, get the size of the TLAS buffers and create them
     D3D12_GET_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO_DESC prebuildDesc = {};
@@ -147,18 +151,26 @@ AccelerationStructureBuffers createTopLevelAS(ID3D12DevicePtr pDevice, ID3D12Gra
 
     // Create the buffers
     AccelerationStructureBuffers buffers;
-    buffers.pScratch = createBuffer(pDevice, info.ScratchDataSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, kDefaultHeapProps);
-    buffers.pResult = createBuffer(pDevice, info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, kDefaultHeapProps);
+    buffers.pScratch = createBuffer(pDevice, info.ScratchDataSizeInBytes,
+                                    D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, kDefaultHeapProps);
+    buffers.pResult = createBuffer(
+        pDevice, info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, kDefaultHeapProps);
     tlasSize = info.ResultDataMaxSizeInBytes;
 
     // The instance desc should be inside a buffer, create and map the buffer
-    buffers.pInstanceDesc = createBuffer(pDevice, sizeof(D3D12_RAYTRACING_INSTANCE_DESC), D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, kUploadHeapProps);
+    buffers.pInstanceDesc =
+        createBuffer(pDevice, sizeof(D3D12_RAYTRACING_INSTANCE_DESC), D3D12_RESOURCE_FLAG_NONE,
+                     D3D12_RESOURCE_STATE_GENERIC_READ, kUploadHeapProps);
     D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDesc;
     buffers.pInstanceDesc->Map(0, nullptr, (void**)&pInstanceDesc);
 
     // Initialize the instance desc. We only have a single instance
-    pInstanceDesc->InstanceID = 0;                            // This value will be exposed to the shader via InstanceID()
-    pInstanceDesc->InstanceContributionToHitGroupIndex = 0;   // This is the offset inside the shader-table. We only have a single geometry, so the offset 0
+    pInstanceDesc->InstanceID = 0; // This value will be exposed to the shader via InstanceID()
+    pInstanceDesc->InstanceContributionToHitGroupIndex =
+        0; // This is the offset inside the shader-table. We only have a single geometry, so the
+           // offset 0
     pInstanceDesc->Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
     mat4 m; // Identity matrix
     memcpy(pInstanceDesc->Transform, &m, sizeof(pInstanceDesc->Transform));
@@ -184,7 +196,8 @@ AccelerationStructureBuffers createTopLevelAS(ID3D12DevicePtr pDevice, ID3D12Gra
     ID3D12CommandListRaytracingPrototypePtr pRtList = pCmdList;
     pRtList->BuildRaytracingAccelerationStructure(&asDesc);
 
-    // We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
+    // We need to insert a UAV barrier before using the acceleration structures in a raytracing
+    // operation
     D3D12_RESOURCE_BARRIER uavBarrier = {};
     uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     uavBarrier.UAV.pResource = buffers.pResult;
@@ -193,17 +206,109 @@ AccelerationStructureBuffers createTopLevelAS(ID3D12DevicePtr pDevice, ID3D12Gra
     return buffers;
 }
 
+ID3D12ResourcePtr mpVertexBuffer;
+ID3D12ResourcePtr mpTopLevelAS;
+ID3D12ResourcePtr mpBottomLevelAS;
+uint64_t mTlasSize = 0;
+
+void createAccelerationStructures()
+{
+#if 0
+    //mpVertexBuffer = createTriangleVB(mpDevice);
+    AccelerationStructureBuffers bottomLevelBuffers = createBottomLevelAS(mpDevice, mpCmdList, mpVertexBuffer);
+    AccelerationStructureBuffers topLevelBuffers = createTopLevelAS(mpDevice, mpCmdList, bottomLevelBuffers.pResult, mTlasSize);
+
+    // Store the AS buffers. The rest of the buffers will be released once we exit the function
+    mpTopLevelAS = topLevelBuffers.pResult;
+    mpBottomLevelAS = bottomLevelBuffers.pResult;
+#endif
+}
+
+#else
+
+struct VkGeometryInstance
+{
+    float transform[12];
+    uint32_t instanceId : 24;
+    uint32_t mask : 8;
+    uint32_t instanceOffset : 24;
+    uint32_t flags : 8;
+    uint64_t accelerationStructureHandle;
+};
+
+struct AccelerationStructureBuffers
+{
+    VkDeviceMemory pScratch;
+    VkDeviceMemory memory;
+    VkAccelerationStructureNVX AS;
+    VkAccelerationStructureNVX pInstanceDesc; // Used only for top-level AS
+};
+
+AccelerationStructureBuffers CreateAccelerationStructure(VkAccelerationStructureTypeNVX type, vector<VkGeometryNVX> geometries, uint32_t instanceCount)
+{
+    AccelerationStructureBuffers newAS;
+
+    VkAccelerationStructureCreateInfoNVX accelerationStructureInfo;
+    accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX;
+    accelerationStructureInfo.pNext = nullptr;
+    accelerationStructureInfo.type = type;
+    accelerationStructureInfo.flags = 0;
+    accelerationStructureInfo.compactedSize = 0;
+    accelerationStructureInfo.instanceCount = instanceCount;
+    accelerationStructureInfo.geometryCount = geometries.size();
+    accelerationStructureInfo.pGeometries = geometries.data();
+
+    VkResult code = tr_get_renderer().vkCreateAccelerationStructureNVX(tr_get_renderer().vk_device,
+                                                     &accelerationStructureInfo, nullptr, &newAS.AS);
+    assert(code == VK_SUCCESS);
+
+    VkAccelerationStructureMemoryRequirementsInfoNVX memoryRequirementsInfo;
+    memoryRequirementsInfo.sType =
+        VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX;
+    memoryRequirementsInfo.pNext = nullptr;
+    memoryRequirementsInfo.accelerationStructure = newAS.AS;
+
+    VkMemoryRequirements2 memReq2;
+    tr_get_renderer().vkGetAccelerationStructureMemoryRequirementsNVX(tr_get_renderer().vk_device,
+                                                    &memoryRequirementsInfo, &memReq2);
+
+    VkMemoryAllocateInfo memoryAllocateInfo;
+    memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryAllocateInfo.pNext = nullptr;
+    memoryAllocateInfo.allocationSize = memReq2.memoryRequirements.size;
+    tr_util_vk_get_memory_type(memReq2.memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                               &memoryAllocateInfo.memoryTypeIndex);
+
+    code = vkAllocateMemory(tr_get_renderer().vk_device, &memoryAllocateInfo, nullptr, &newAS.memory);
+    assert(code == VK_SUCCESS);
+
+    VkBindAccelerationStructureMemoryInfoNVX bindInfo;
+    bindInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX;
+    bindInfo.pNext = nullptr;
+    bindInfo.accelerationStructure = newAS.AS;
+    bindInfo.memory = newAS.memory;
+    bindInfo.memoryOffset = 0;
+    bindInfo.deviceIndexCount = 0;
+    bindInfo.pDeviceIndices = nullptr;
+
+    code = tr_get_renderer().vkBindAccelerationStructureMemoryNVX(tr_get_renderer().vk_device, 1, &bindInfo);
+    assert(code == VK_SUCCESS);
+
+    return newAS;
+};
+
 #endif
 
 void init_tiny_renderer(GLFWwindow* window)
 {
-    std::vector<const char*> instance_layers = {
+    vector<string> instance_layers = {
 #if defined(_DEBUG)
         "VK_LAYER_LUNARG_standard_validation",
 #endif
     };
 
-    std::vector<const char*> device_layers;
+    vector<string> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                                        VK_NVX_RAYTRACING_EXTENSION_NAME};
 
     int width = 0;
     int height = 0;
@@ -232,8 +337,8 @@ void init_tiny_renderer(GLFWwindow* window)
     settings.log_fn = renderer_log;
 #if defined(TINY_RENDERER_VK)
     settings.vk_debug_fn = vulkan_debug;
-    settings.instance_layers.count = (uint32_t)instance_layers.size();
-    settings.instance_layers.names = instance_layers.empty() ? nullptr : instance_layers.data();
+    settings.instance_layers = instance_layers;
+    settings.device_extensions = device_extensions;
 #endif
     tr_create_renderer(k_app_name, &settings, &m_renderer);
 
@@ -241,6 +346,7 @@ void init_tiny_renderer(GLFWwindow* window)
     tr_create_cmd_n(m_cmd_pool, false, k_image_count, &m_cmds);
 
 #if defined(TINY_RENDERER_VK)
+
     // Uses HLSL source
     auto vert = load_file(k_asset_dir + "simple.vs.spv");
     auto frag = load_file(k_asset_dir + "simple.ps.spv");

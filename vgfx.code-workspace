@@ -6,7 +6,9 @@
 	],
 	"settings": {
 		"files.associations": {
-			"string": "cpp"
+
+			"string": "cpp",
+			"vector": "cpp"
 		}
 	}
 }

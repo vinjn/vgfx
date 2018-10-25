@@ -32,13 +32,13 @@ uint64_t s_frame_count = 0;
 
 void init_tiny_renderer(GLFWwindow* window)
 {
-    std::vector<const char*> instance_layers = {
+    std::vector<std::string> instance_layers = {
 #if defined(_DEBUG)
         "VK_LAYER_LUNARG_standard_validation",
 #endif
     };
 
-    std::vector<const char*> device_layers;
+    std::vector<std::string> device_layers;
 
     int width = 0;
     int height = 0;
@@ -67,8 +67,7 @@ void init_tiny_renderer(GLFWwindow* window)
     settings.log_fn = renderer_log;
 #if defined(TINY_RENDERER_VK)
     settings.vk_debug_fn = vulkan_debug;
-    settings.instance_layers.count = (uint32_t)instance_layers.size();
-    settings.instance_layers.names = instance_layers.empty() ? nullptr : instance_layers.data();
+    settings.instance_layers = instance_layers;
 #endif
     tr_create_renderer(k_app_name, &settings, &m_renderer);
 
