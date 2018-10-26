@@ -28,6 +28,7 @@ tr_cmd_pool* m_cmd_pool = nullptr;
 tr_cmd** m_cmds = nullptr;
 tr_shader_program* m_shader = nullptr;
 tr_buffer* m_tri_vertex_buffer = nullptr;
+tr_buffer* m_tri_index_buffer = nullptr;
 tr_pipeline* m_pipeline = nullptr;
 
 uint32_t s_window_width;
@@ -237,12 +238,23 @@ struct AccelerationStructureBuffers
     VkAccelerationStructureNVX structure = VK_NULL_HANDLE;
 };
 
+VkDeviceSize GetScratchBufferSize(VkAccelerationStructureNVX handle)
+{
+    VkMemoryRequirements2 scratchMemReq;
+    {
+        VkAccelerationStructureMemoryRequirementsInfoNVX memoryRequirementsInfo = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX };
+        memoryRequirementsInfo.accelerationStructure = handle;
+        tr_get_renderer().vkGetAccelerationStructureScratchMemoryRequirementsNVX(tr_get_renderer().vk_device, &memoryRequirementsInfo, &scratchMemReq);
+    }
+    return scratchMemReq.memoryRequirements.size;
+};
+
 AccelerationStructureBuffers CreateAccelerationStructure(VkAccelerationStructureTypeNVX type, vector<VkGeometryNVX> geometries, uint32_t instanceCount)
 {
     AccelerationStructureBuffers newAS;
     VkResult code = VK_SUCCESS;
 
-    // newAS.structure
+    // structure
     VkAccelerationStructureCreateInfoNVX structureInfo = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX };
     {
         structureInfo.type = type;
@@ -257,7 +269,7 @@ AccelerationStructureBuffers CreateAccelerationStructure(VkAccelerationStructure
         assert(code == VK_SUCCESS);
     }
 
-    // newAS.resultMem
+    // resultMem
     VkMemoryAllocateInfo resultMemInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     {
         VkMemoryRequirements2 ASMemReq;
@@ -273,7 +285,7 @@ AccelerationStructureBuffers CreateAccelerationStructure(VkAccelerationStructure
         assert(code == VK_SUCCESS);
     }
 
-    // bind newAS.structure to newAS.resultMem
+    // bind structure to resultMem
     VkBindAccelerationStructureMemoryInfoNVX bindInfo = { VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX };
     {
         bindInfo.accelerationStructure = newAS.structure;
@@ -285,6 +297,13 @@ AccelerationStructureBuffers CreateAccelerationStructure(VkAccelerationStructure
         code = tr_get_renderer().vkBindAccelerationStructureMemoryNVX(tr_get_renderer().vk_device, 1, &bindInfo);
         assert(code == VK_SUCCESS);
     }
+
+    // scratch
+
+    // build AS
+    //vkCmdBuildAccelerationStructureNV(cmdBuf, VK_TOP_LEVEL_ACCELERATION_STRUCTURE_NV, tlas, instances, scratchBuf)
+
+    //    vkCmdPipelineBarrier()
 
     return newAS;
 };
@@ -370,12 +389,24 @@ void init_tiny_renderer(GLFWwindow* window)
         vertexData[4 * 1 + 0] += -0.5f;
         vertexData[4 * 2 + 0] += -0.5f;
 
-        uint64_t vertexDataSize = sizeof(float) * vertexData.size();
+        uint64_t vertexDataSize = sizeof(vertexData[0]) * vertexData.size();
         uint32_t vertexStride = sizeof(float) * 4;
         tr_create_vertex_buffer(m_renderer, vertexDataSize, true, vertexStride,
                                 &m_tri_vertex_buffer);
         memcpy(m_tri_vertex_buffer->cpu_mapped_address, vertexData.data(), vertexDataSize);
+
+        std::vector<uint16_t> indexData = { 0, 1, 2 };
+
+        uint64_t indexDataSize = sizeof(indexData[0]) * indexData.size();
+        tr_create_index_buffer(m_renderer, indexDataSize, true, tr_index_type_uint16,
+            &m_tri_index_buffer);
+        memcpy(m_tri_index_buffer->cpu_mapped_address, indexData.data(), indexDataSize);
     }
+
+#if defined(TINY_RENDERER_VK)
+    std::vector<VkGeometryNVX> geometries;
+
+#endif
 }
 
 void destroy_tiny_renderer() { tr_destroy_renderer(m_renderer); }
